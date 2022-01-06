@@ -19,7 +19,7 @@ impl Lexer {
     }
 
     fn is_identifier(&self, c: char) -> bool {
-          self.is_identifier_start(c) || self.is_digit(c)
+        self.is_identifier_start(c) || self.is_digit(c)
     }
 
     fn advance(&mut self) {
@@ -35,23 +35,22 @@ impl Lexer {
     }
 
     fn match_operator(&mut self, c: char) -> (&str, TokenType) {
-        let peek: char = self.peek();
-        if peek == '=' || peek == c {
+        if self.peek() == '=' || self.peek() == c {
             self.advance();
             self.advance();
         } else {
             self.advance();
         }
         return match c {
-            '+' if peek == '=' => ("+=", TokenType::PlusEqual),
-            '-' if peek == '=' => ("-=", TokenType::DashEqual),
-            '*' if peek == '=' => ("*=", TokenType::StarEqual),
-            '/' if peek == '=' => ("/=", TokenType::SlashEqual),
-            '!' if peek == '=' => ("!=", TokenType::NotEqual),
-            '+' if peek == '+' => ("++", TokenType::PlusPlus),
-            '-' if peek == '-' => ("--", TokenType::DashDash),
-            '*' if peek == '*' => ("**", TokenType::StarStar),
-            '/' if peek == '/' => ("//", TokenType::SlashSlash),
+            '+' if self.peek() == '=' => ("+=", TokenType::PlusEqual),
+            '-' if self.peek() == '=' => ("-=", TokenType::DashEqual),
+            '*' if self.peek() == '=' => ("*=", TokenType::StarEqual),
+            '/' if self.peek() == '=' => ("/=", TokenType::SlashEqual),
+            '!' if self.peek() == '=' => ("!=", TokenType::NotEqual),
+            '+' if self.peek() == '+' => ("++", TokenType::PlusPlus),
+            '-' if self.peek() == '-' => ("--", TokenType::DashDash),
+            '*' if self.peek() == '*' => ("**", TokenType::StarStar),
+            '/' if self.peek() == '/' => ("//", TokenType::SlashSlash),
             '+' => ("+", TokenType::Plus),
             '-' => ("-", TokenType::Dash),
             '*' => ("*", TokenType::Star),
