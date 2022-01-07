@@ -66,7 +66,7 @@ impl Lexer {
                 '/' => {self.advance(); ("(", TokenType::Slash)},
                 '(' => {self.advance(); ("(", TokenType::LeftParen)},
                 ')' => {self.advance(); (")", TokenType::RightParen)},
-                '=' => {self.advance(); ("=", TokenType::LeftParen)},
+                '=' => {self.advance(); ("=", TokenType::Equal)},
                 ';' => {self.advance(); (";", TokenType::SemiColon)},
                 ' ' | '\t' => {
                     self.advance();
@@ -83,8 +83,8 @@ impl Lexer {
                     self.advance();
                     while c != '"' {
                         if c == '\n' || c == '\0' {
-                            let mut error = Error {typ: ErrorType::StringWithoutEnd, msg: "Closing double quote was not found", helpers: "help: Add a closing double quote to signal the end of the string".to_string()};
-                            error.emit_error(Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: begin + string.len() + 1, line: line.to_string()});
+                            let error = Error {typ: ErrorType::StringWithoutEnd, msg: "Closing double quote was not found", helpers: "help: Add a closing double quote to signal the end of the string".to_string()};
+                            error.emit_error(&Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: begin + string.len() + 1, line: line.to_string()});
                             break;
                         }
                         string.push(c);
@@ -110,6 +110,7 @@ impl Lexer {
                     (name.as_str(), id_type)
                 },
                 num if self.is_digit(num) => {
+                    let mut typ: TokenType = TokenType::Int;
                     while self.is_digit(c) {
                         digit.push(c);
                         c = self.peek();
@@ -118,9 +119,10 @@ impl Lexer {
                     if c == '.' {
                         c = self.peek();
                         self.advance();
+                        digit.push('.');
                         if !self.is_digit(c) {
-                            let mut err = Error {typ: ErrorType::DecNotFound, msg: "", helpers: "help: Take away this dot or insert a number after the dot".to_string()};
-                            err.emit_error(Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len(), line: line.to_string()});
+                            let err = Error {typ: ErrorType::DecNotFound, msg: "", helpers: "help: Take away this dot or insert a number after the dot".to_string()};
+                            err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len(), line: line.to_string()});
                             break;
                         }
                         while self.is_digit(c) {
@@ -129,18 +131,19 @@ impl Lexer {
                             self.advance();
                         }
                         if c != '.' {
-                            (digit.as_str(), TokenType::Dec)
+                            typ = TokenType::Dec;
                         } else {
                             let mut err = Error {typ: ErrorType::DecTooManyDots, msg: "", helpers: "help: Take away this dot".to_string()};
                             err.note("note: floating point numbers may only have 1 dot");
-                            err.emit_error(Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len() + 1, line: line.to_string()});
+                            err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len() + 1, line: line.to_string()});
                             break;
                         };
+                        println!("abc");
                     }
-                    (digit.as_str(), TokenType::Int)
+                    (digit.as_str(), typ)
                 },
                 _ => {
-                    Error {typ: ErrorType::UnknownChar, msg: format!("Unknown character '{}'", c).as_str(), helpers: "".to_string()}.emit_error(Token {typ: TokenType::Error, value: format!("{}", c), lineno: lineno, col: begin, line: line.to_string()});
+                    Error {typ: ErrorType::UnknownChar, msg: format!("Unknown character '{}'", c).as_str(), helpers: "".to_string()}.emit_error(&Token {typ: TokenType::Error, value: format!("{}", c), lineno: lineno, col: begin, line: line.to_string()});
                     break;
                 },
             };

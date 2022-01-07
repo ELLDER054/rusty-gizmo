@@ -6,6 +6,7 @@ pub struct Token {
     pub line: String,
 }
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     PlusEqual,
     PlusPlus,
@@ -31,5 +32,6 @@ pub enum TokenType {
     Int,
     Dec,
     Str,
+    Equal,
     Error,
 }

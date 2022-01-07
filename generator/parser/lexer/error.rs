@@ -7,7 +7,7 @@ pub struct Error<'a> {
 }
 
 impl<'a> Error<'_> {
-    pub fn emit_error(&self, token: Token) {
+    pub fn emit_error(&self, token: &Token) {
         let spaces = " ".repeat(token.lineno.to_string().len());
         eprintln!("\x1b[91merror\x1b[0m: \x1b[97m{}\x1b[0m", self.msg_for());
         eprintln!("  \x1b[94m-->\x1b[0m abc.gizmo:{}:{}", token.lineno, token.col);
@@ -32,7 +32,7 @@ impl<'a> Error<'_> {
             ErrorType::UnknownChar => "Unknown character",
             ErrorType::DecTooManyDots => "Too many dots in floating point number",
             ErrorType::DecNotFound => "Expected number after dot in floating point number",
-            _ => "",
+            ErrorType::ExpectedToken => "Expected token",
         }
     }
 
@@ -47,6 +47,8 @@ pub enum ErrorType {
     UnknownChar,
     DecTooManyDots,
     DecNotFound,
+
+    ExpectedToken,
 }
 
 pub struct Warning {
