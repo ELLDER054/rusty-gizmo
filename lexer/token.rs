@@ -29,6 +29,7 @@ pub enum TokenType {
     For,
     Id,
     Int,
+    Dec,
     Str,
     Error,
 }
