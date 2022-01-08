@@ -30,6 +30,18 @@ impl Node for Int {
     }
 }
 
+struct Operator {
+    left: Box<dyn Node>,
+    oper: String,
+    right: Box<dyn Node>,
+}
+
+impl Node for Operator {
+    fn get_type(&self) -> &str {
+        return "oper";
+    }
+}
+
 struct Dec {
     value: f64,
 }
@@ -77,17 +89,75 @@ impl Parser {
 
     fn expression(&mut self, start: usize) -> Box<dyn Node> {
         self.pos = start;
-        return self.term(start);
+        return self.equality(start);
+    }
+
+    fn equality(&mut self, start: usize) -> Box<dyn Node> {
+        self.pos = start;
+        let mut expr = self.comparison(self.pos);
+
+        while self.expect_type(TokenType::EqualEqual) || self.expect_type(TokenType::NotEqual) {
+            let right = self.comparison(self.pos);
+            if (*right).get_type() == "non" {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected expression after this operator", helpers: "help: Take away the operator or insert an expression after this operator".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+            expr = Box::new(Operator {left: expr, oper: self.tokens[self.pos - 1].value.as_str().to_string(), right: right});
+        }
+
+        return expr;
+    }
+
+    fn comparison(&mut self, start: usize) -> Box<dyn Node> {
+        self.pos = start;
+        let mut expr = self.term(self.pos);
+
+        while self.expect_type(TokenType::GreaterThan) || self.expect_type(TokenType::LessThan) || self.expect_type(TokenType::GreaterEqual) || self.expect_type(TokenType::LessEqual) {
+            let right = self.term(self.pos);
+            if (*right).get_type() == "non" {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected expression after this operator", helpers: "help: Take away the operator or insert an expression after this operator".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+            expr = Box::new(Operator {left: expr, oper: self.tokens[self.pos - 1].value.as_str().to_string(), right: right});
+        }
+
+        return expr;
     }
 
     fn term(&mut self, start: usize) -> Box<dyn Node> {
         self.pos = start;
-        return self.factor(start);
+        let mut expr = self.factor(self.pos);
+
+        while self.expect_type(TokenType::Plus) || self.expect_type(TokenType::Dash) {
+            let right = self.factor(self.pos);
+            if (*right).get_type() == "non" {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected expression after this operator", helpers: "help: Take away the operator or insert an expression after this operator".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+            expr = Box::new(Operator {left: expr, oper: self.tokens[self.pos - 1].value.as_str().to_string(), right: right});
+        }
+
+        return expr;
     }
 
     fn factor(&mut self, start: usize) -> Box<dyn Node> {
         self.pos = start;
-        return self.unary(start);
+        let mut expr = self.unary(self.pos);
+
+        while self.expect_type(TokenType::Star) || self.expect_type(TokenType::Slash) {
+            let right = self.unary(self.pos);
+            if (*right).get_type() == "non" {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected expression after this operator", helpers: "help: Take away the operator or insert an expression after this operator".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+            expr = Box::new(Operator {left: expr, oper: self.tokens[self.pos - 1].value.as_str().to_string(), right: right});
+        }
+
+        return expr;
     }
 
     fn unary(&mut self, start: usize) -> Box<dyn Node> {
@@ -134,13 +204,13 @@ impl Parser {
         }
         let expr: Box<dyn Node> = self.expression(self.pos);
         if (*expr).get_type() == "non" {
-            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected expression after this equals sign", helpers: "help: Take away the equals sign or insert an expression after the equals sign".to_string()};
+            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected expression after this equals sign", helpers: "help: Take away the equals sign or insert an expression after this equals sign".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
         let semi: bool = self.expect_type(TokenType::SemiColon);
         if  !semi {
-            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected semi-colon after this expression", helpers: "help: Insert a semi-colon after the expression".to_string()};
+            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected semi-colon after this expression", helpers: "help: Insert a semi-colon after this expression".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
@@ -163,7 +233,7 @@ impl Parser {
         while self.pos < max_len {
            let stmt: Box<dyn Node> = self.statement(self.pos);
            if (*stmt).get_type() == "non" {
-               println!("Error");
+               println!("error");
                break;
            }
            println!("Success");

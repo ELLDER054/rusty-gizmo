@@ -51,23 +51,28 @@ impl Lexer {
             let mut digit: String = String::new();
             let begin = self.col;
             let (value, typ): (&str, TokenType) = match c {
-                '+' if self.peek() == '=' => {self.advance(); ("+=", TokenType::PlusEqual)},
-                '-' if self.peek() == '=' => {self.advance(); ("-=", TokenType::DashEqual)},
-                '*' if self.peek() == '=' => {self.advance(); ("*=", TokenType::StarEqual)},
-                '/' if self.peek() == '=' => {self.advance(); ("/=", TokenType::SlashEqual)},
-                '!' if self.peek() == '=' => {self.advance(); ("!=", TokenType::NotEqual)},
-                '+' if self.peek() == '+' => {self.advance(); ("++", TokenType::PlusPlus)},
-                '-' if self.peek() == '-' => {self.advance(); ("--", TokenType::DashDash)},
-                '*' if self.peek() == '*' => {self.advance(); ("**", TokenType::StarStar)},
-                '/' if self.peek() == '/' => {self.advance(); ("//", TokenType::SlashSlash)},
-                '+' => {self.advance(); ("(", TokenType::Plus)},
-                '-' => {self.advance(); ("(", TokenType::Dash)},
-                '*' => {self.advance(); ("(", TokenType::Star)},
-                '/' => {self.advance(); ("(", TokenType::Slash)},
+                '+' if self.peek() == '=' => {self.advance(); self.advance(); ("+=", TokenType::PlusEqual)},
+                '-' if self.peek() == '=' => {self.advance(); self.advance(); ("-=", TokenType::DashEqual)},
+                '*' if self.peek() == '=' => {self.advance(); self.advance(); ("*=", TokenType::StarEqual)},
+                '/' if self.peek() == '=' => {self.advance(); self.advance(); ("/=", TokenType::SlashEqual)},
+                '!' if self.peek() == '=' => {self.advance(); self.advance(); ("!=", TokenType::NotEqual)},
+                '+' if self.peek() == '+' => {self.advance(); self.advance(); ("++", TokenType::PlusPlus)},
+                '-' if self.peek() == '-' => {self.advance(); self.advance(); ("--", TokenType::DashDash)},
+                '*' if self.peek() == '*' => {self.advance(); self.advance(); ("**", TokenType::StarStar)},
+                '/' if self.peek() == '/' => {self.advance(); self.advance(); ("//", TokenType::SlashSlash)},
+                '+' => {self.advance(); ("+", TokenType::Plus)},
+                '-' => {self.advance(); ("-", TokenType::Dash)},
+                '*' => {self.advance(); ("*", TokenType::Star)},
+                '/' => {self.advance(); ("/", TokenType::Slash)},
                 '(' => {self.advance(); ("(", TokenType::LeftParen)},
                 ')' => {self.advance(); (")", TokenType::RightParen)},
+                '=' if self.peek() == '=' => {self.advance(); self.advance(); ("==", TokenType::EqualEqual)},
                 '=' => {self.advance(); ("=", TokenType::Equal)},
                 ';' => {self.advance(); (";", TokenType::SemiColon)},
+                '>' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::GreaterEqual)},
+                '>' => {self.advance(); (">", TokenType::GreaterThan)},
+                '>' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::LessEqual)},
+                '<' => {self.advance(); (">", TokenType::LessThan)},
                 ' ' | '\t' => {
                     self.advance();
                     continue;
@@ -138,7 +143,6 @@ impl Lexer {
                             err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len() + 1, line: line.to_string()});
                             break;
                         };
-                        println!("abc");
                     }
                     (digit.as_str(), typ)
                 },

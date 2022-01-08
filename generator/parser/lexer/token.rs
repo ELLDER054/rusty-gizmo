@@ -33,5 +33,11 @@ pub enum TokenType {
     Dec,
     Str,
     Equal,
+    EqualEqual,
+    Not,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
     Error,
 }
