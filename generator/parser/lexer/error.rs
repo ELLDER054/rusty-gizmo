@@ -19,13 +19,6 @@ impl<'a> Error<'_> {
         }
     }
 
-    pub fn emit_warning(&self, token: Token) {
-        eprintln!("\x1b[93mwarning\x1b[0m: \x1b[97m{}\x1b[0m", self.msg);
-        eprintln!("  \x1b[94m-->\x1b[0m abc.gizmo:{}:{}", token.lineno, token.col);
-        eprintln!("\x1b[94m{} | \x1b[0m\n{}\n{0}\x1b[94m |\x1b[0m{}{}", " ".repeat(token.lineno.to_string().len()), token.line, " ".repeat(token.lineno.to_string().len() + token.col), "\x1b[93m^\x1b[0m".repeat(token.value.len()));
-        eprintln!("{}", self.helpers);
-    }
-
     fn msg_for(&self) -> &str {
         return match self.typ {
             ErrorType::StringWithoutEnd => "String never ends",
@@ -49,12 +42,4 @@ pub enum ErrorType {
     DecNotFound,
 
     ExpectedToken,
-}
-
-pub struct Warning {
-    pub typ: WarningType,
-    pub contents: String,
-}
-
-pub enum WarningType {
 }

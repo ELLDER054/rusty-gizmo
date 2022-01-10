@@ -71,8 +71,9 @@ impl Lexer {
                 ';' => {self.advance(); (";", TokenType::SemiColon)},
                 '>' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::GreaterEqual)},
                 '>' => {self.advance(); (">", TokenType::GreaterThan)},
-                '>' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::LessEqual)},
+                '<' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::LessEqual)},
                 '<' => {self.advance(); (">", TokenType::LessThan)},
+                ':' => {self.advance(); (":", TokenType::Colon)},
                 ' ' | '\t' => {
                     self.advance();
                     continue;
@@ -86,17 +87,19 @@ impl Lexer {
                 '"' => {
                     c = self.peek();
                     self.advance();
+                    string.push('"');
                     while c != '"' {
                         if c == '\n' || c == '\0' {
                             let error = Error {typ: ErrorType::StringWithoutEnd, msg: "Closing double quote was not found", helpers: "help: Add a closing double quote to signal the end of the string".to_string()};
                             error.emit_error(&Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: begin + string.len() + 1, line: line.to_string()});
-                            break;
+                            continue;
                         }
                         string.push(c);
                         c = self.peek();
                         self.advance();
                     }
                     self.advance();
+                    string.push('"');
                     (string.as_str(), TokenType::Str)
                 },
                 id if self.is_identifier_start(id) => {
@@ -110,6 +113,11 @@ impl Lexer {
                         "if" => TokenType::If,
                         "while" => TokenType::While,
                         "for" => TokenType::For,
+                        "not" => TokenType::Not,
+                        "and" => TokenType::And,
+                        "or" => TokenType::Or,
+                        "true" | "false" => TokenType::Bool,
+                        "int" | "string" | "char" | "bool" | "dec" => TokenType::Type,
                         _ => TokenType::Id,
                     };
                     (name.as_str(), id_type)
@@ -128,7 +136,7 @@ impl Lexer {
                         if !self.is_digit(c) {
                             let err = Error {typ: ErrorType::DecNotFound, msg: "", helpers: "help: Take away this dot or insert a number after the dot".to_string()};
                             err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len(), line: line.to_string()});
-                            break;
+                            continue;
                         }
                         while self.is_digit(c) {
                             digit.push(c);
@@ -141,14 +149,14 @@ impl Lexer {
                             let mut err = Error {typ: ErrorType::DecTooManyDots, msg: "", helpers: "help: Take away this dot".to_string()};
                             err.note("note: floating point numbers may only have 1 dot");
                             err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len() + 1, line: line.to_string()});
-                            break;
+                            continue;
                         };
                     }
                     (digit.as_str(), typ)
                 },
                 _ => {
                     Error {typ: ErrorType::UnknownChar, msg: format!("Unknown character '{}'", c).as_str(), helpers: "".to_string()}.emit_error(&Token {typ: TokenType::Error, value: format!("{}", c), lineno: lineno, col: begin, line: line.to_string()});
-                    break;
+                    continue;
                 },
             };
             tokens.push(Token {typ: typ, value : value.to_string(), lineno: lineno, col: begin, line: line.to_string()});

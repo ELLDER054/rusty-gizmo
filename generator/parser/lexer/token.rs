@@ -39,5 +39,10 @@ pub enum TokenType {
     GreaterThan,
     LessEqual,
     GreaterEqual,
+    Type,
+    And,
+    Or,
+    Bool,
+    Colon,
     Error,
 }
