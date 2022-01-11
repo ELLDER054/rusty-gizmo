@@ -1,10 +1,10 @@
-mod generator;
+mod parser;
 
 use std::env;
 use std::fs;
-use generator::parser::lexer::Lexer;
-use generator::parser::lexer::token::Token;
-use generator::parser::Parser;
+use parser::lexer::Lexer;
+use parser::lexer::token::Token;
+use parser::Parser;
 
 fn main() {
     let args: Vec<String> = env::args().collect();

@@ -74,6 +74,7 @@ impl Lexer {
                 '<' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::LessEqual)},
                 '<' => {self.advance(); (">", TokenType::LessThan)},
                 ':' => {self.advance(); (":", TokenType::Colon)},
+                ',' => {self.advance(); (",", TokenType::Comma)},
                 ' ' | '\t' => {
                     self.advance();
                     continue;

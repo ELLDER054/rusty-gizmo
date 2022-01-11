@@ -44,5 +44,6 @@ pub enum TokenType {
     Or,
     Bool,
     Colon,
+    Comma,
     Error,
 }
