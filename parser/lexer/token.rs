@@ -1,3 +1,4 @@
+// Stores each token's information
 pub struct Token {
     pub typ: TokenType,
     pub value: String,
@@ -6,6 +7,7 @@ pub struct Token {
     pub line: String,
 }
 
+// An enum with all the tokens for the language
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     PlusEqual,

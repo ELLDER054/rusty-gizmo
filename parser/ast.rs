@@ -1,3 +1,4 @@
+// An enum to store each possible Node
 #[derive(Debug, PartialEq, Eq)]
 pub enum Node {
     Let {
@@ -11,6 +12,7 @@ pub enum Node {
     Non,
 }
 
+// An enum to store each possible expression node
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Expression {
     Int(i32),
@@ -29,11 +31,16 @@ pub enum Expression {
     Non,
 }
 
+// Implement functions for an expression node
 impl Expression {
+    // Returns the type of an operation "left" "oper" "right" (i.e., 5 + 5 results in int)
     fn binary_rules(&self, oper: &String, left: &Box<Expression>, right: &Box<Expression>) -> &str {
         match oper.as_str() {
+            // Match the operator
             "+" => match (*left).validate() {
+                // After matching the operator, match the left side
                 "int" => match (*right).validate() {
+                    // Once the left side is known, match the right side
                     "int" => "int",
                     "dec" => "dec",
                     _ => "error",
@@ -112,6 +119,7 @@ impl Expression {
 
     pub fn validate(&self) -> &str {
         match self {
+            // Match each kind of expression node to find it's type
             Expression::Int(_i) => "int",
             Expression::Dec(_d) => "dec",
             Expression::Bool(_b) => "bool",
