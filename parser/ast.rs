@@ -1,26 +1,34 @@
 // An enum to store each possible Node
 #[derive(Debug, PartialEq, Eq)]
 pub enum Node {
+    // Let statement
+    // let a: int = 5;
+    // or
+    // let a = 5;
     Let {
         id: String,
         expr: Box<Expression>,
         gen_id: String,
     },
+
+    // Function call
+    // write(5);
     FuncCall {
         id: String,
         args: Vec<Box<Expression>>,
     },
+
     Non,
 }
 
 // An enum to store each possible expression node
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Expression {
-    Int(i32),
-    Dec(String),
-    Bool(bool),
-    Str(String),
-    Id(String, String, Vec<String>, String),
+    Int(i32),                                // Integer
+    Dec(String),                             // Decimal number (i.e., 5.5)
+    Bool(bool),                              // Boolean value (true or false)
+    Str(String),                             // String value
+    Id(String, String, Vec<String>, String), // Identifier
     BinaryOperator {
         oper: String,
         left: Box<Expression>,
@@ -126,7 +134,7 @@ impl Expression {
             Expression::Dec(_d) => "dec",
             Expression::Bool(_b) => "bool",
             Expression::Str(_s) => "string",
-            Expression::Id(_i, t, _a, gen_id) => t,
+            Expression::Id(_i, t, _a, _gen_id) => t,
             Expression::BinaryOperator {oper, left, right} => self.binary_rules(oper, left, right),
             Expression::UnaryOperator {oper, child} => self.unary_rules(oper, child),
             Expression::Non => "",

@@ -13,8 +13,8 @@ use self::lexer::error::ErrorType;
 use self::ast::Node;
 use self::ast::Expression;
 use self::generator::Generator;
-use self::symbol::SymbolTable;
 use self::symbol::SymbolController;
+use self::symbol::SymbolType;
 
 // Stores information for a "Parser"
 pub struct Parser {
@@ -180,7 +180,8 @@ impl Parser {
         }
         let id: bool = self.expect_type(TokenType::Id);
         if id {
-            return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), self.symtable.find_symbol((&self.tokens[self.pos - 1].value).to_string(), "var".to_string(), Vec::new()).unwrap().typ, Vec::new(), self.symtable.find_symbol((&self.tokens[self.pos - 1].value).to_string(), "var".to_string(), Vec::new()).unwrap().gen_id);
+            let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, Vec::new());
+            return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), Vec::new(), sym.gen_id.clone());
         }
 
         // Nothing is found, return Non
@@ -330,7 +331,7 @@ impl Parser {
             std::process::exit(1);
         }
 
-        self.symtable.add_symbol((&self.tokens[save].value).to_string(), expr.validate().to_string(), "var".to_string(), Vec::new(), format!("%.{}", self.id_c));
+        self.symtable.add_symbol((&self.tokens[save].value).to_string(), expr.validate().to_string(), SymbolType::Var, format!("%.{}", self.id_c), Vec::new());
         self.id_c += 1;
         return Node::Let {id: (&self.tokens[save].value).to_string(), expr: Box::new(expr), gen_id: format!("%.{}", self.id_c - 1)};
     }
@@ -340,7 +341,7 @@ impl Parser {
         if max_len == 0 {
             max_len = self.tokens.len();
         }
-        let mut gen: Generator = Generator {name_num: 0, code: "define i32 @main() {\nentry:\n".to_string(), ends: "".to_string(), begins: "".to_string()};
+        let mut gen: Generator = Generator {name_num: 0, str_num: 0, code: "define i32 @main() {\nentry:\n".to_string(), ends: "".to_string(), begins: "".to_string()};
 
         // Stores each statement's node
         let mut nodes: Vec<Node> = Vec::new();
@@ -352,6 +353,7 @@ impl Parser {
             // Check for a let statement
             if let_stmt != Node::Non {
                 if let Node::Let {id, expr, gen_id} = let_stmt {
+                    // Push the Node onto the nodes list
                     nodes.push(Node::Let {id, expr, gen_id});
                     continue;
                 }
@@ -361,6 +363,7 @@ impl Parser {
             let func_call = self.func_call(self.pos);
             if func_call != Node::Non {
                 if let Node::FuncCall {id, args} = func_call {
+                    // Push the Node onto the nodes list
                     nodes.push(Node::FuncCall {id, args});
                     continue;
                 }
@@ -373,7 +376,6 @@ impl Parser {
         gen.gen_all(nodes);
         gen.code.push_str("\tret i32 0\n}\n");
         gen.code = format!("{}{}{}", gen.begins, gen.code, gen.ends);
-        //println!("{}", gen.code);
 
         // Open an output file and write to it
         let mut out_file = File::create("a.ll").expect("Couldn't create the output file");
@@ -383,10 +385,6 @@ impl Parser {
 
     // Resets the position and calls "program()"
     pub fn parse(&mut self) {
-        self.symtable = SymbolController {global: SymbolTable {parent: None, child: None, group: Vec::new()}, current: SymbolTable {parent: None, child: None, group: Vec::new()}};
-        self.symtable.add_symbol("abc".to_string(), "int".to_string(), "func".to_string(), Vec::new(), format!("%.{}", self.id_c));
-        assert_ne!(self.symtable.find_symbol("abc".to_string(), "func".to_string(), Vec::new()), None);
-        assert_eq!(self.symtable.find_symbol("def".to_string(), "func".to_string(), Vec::new()), None);
         self.pos = 0;
         self.program(0);
     }

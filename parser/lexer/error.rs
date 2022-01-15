@@ -5,14 +5,13 @@ use super::token::Token;
 
 // Stores the information for each error
 pub struct Error<'a> {
-    pub typ: ErrorType,
-    pub msg: &'a str,
-    pub helpers: String,
+    pub typ: ErrorType,  // Type of the error
+    pub msg: &'a str,    // Error message
+    pub helpers: String, // Helper messages
 }
 
 // Implement functions to pretty-print the error's information
 impl<'a> Error<'_> {
-
     // Emits an error with colors and all information
     pub fn emit_error(&self, token: &Token) {
         let spaces = " ".repeat(token.lineno.to_string().len());

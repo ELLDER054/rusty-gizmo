@@ -26,9 +26,10 @@ fn type_of_oper(o: String) -> &'static str {
 // Stores information for a "Generator"
 pub struct Generator {
     pub name_num: usize, // Number of variables created
-    pub code: String, // Output code
-    pub ends: String, // Will be added to the end of "code" when done generating
-    pub begins: String, // Will be added to the beginning of "code" when done generating
+    pub str_num: usize,  // Number of strings created
+    pub code: String,    // Output code
+    pub ends: String,    // Will be added to the end of "code" when done generating
+    pub begins: String,  // Will be added to the beginning of "code" when done generating
 }
 
 // Implement functions for a "Generator"
@@ -37,7 +38,7 @@ impl Generator {
     pub fn gen_all(&mut self, ast: Vec<Node>) {
         for node in ast.iter() {
             match node {
-                // Match node for each type of Node
+                // Match node for each type of Node and call the correct function
                 Node::Let {id: _, expr, gen_id} => self.gen_let_stmt(&expr, gen_id.to_string()),
                 Node::FuncCall {id, args} => self.gen_func_call(id.to_string(), args),
                 Node::Non => {},
@@ -48,14 +49,13 @@ impl Generator {
     // Generates LLVM ir for an expression (recursively)
     fn gen_expr(&mut self, expr: &Box<Expression>) -> String {
         // Clone the expression
-        // TODO: Change this to use less memory
         let e = (**expr).clone();
         match e {
             // Match the cloned expression against each type of Expression
             Expression::Int(i) => i.to_string(),
             Expression::Dec(d) => d.to_string(),
             Expression::Bool(b) => if b {"1".to_string()} else {"0".to_string()},
-            Expression::Str(s) => s,
+            Expression::Str(s) => format!("c{}", s),
             Expression::Id(_i, t, _a, gen_id) => {
                 let typ = type_of(t);
                 self.code.push_str(format!("\t%{} = load {}, {}* {}\n", self.name_num, typ, typ, gen_id).as_str());
@@ -122,6 +122,7 @@ impl Generator {
     fn gen_func_call(&mut self, id: String, args: &Vec<Box<Expression>>) {
         // Create a vector of tuples to store the types and names of each argument
         let mut arg_names: Vec<(String, String)> = Vec::new();
+
         // This also provides a chance for the "gen_expr()" function to set up
         // the variables it uses
         for expr in args {
@@ -136,16 +137,30 @@ impl Generator {
                 "i32" => self.code.push_str("[3 x i8], [3 x i8]* @.int"),
                 "double" => self.code.push_str("[3 x i8], [3 x i8]* @.dec"),
                 "i1" => self.code.push_str("[3 x i8], [3 x i8]* @.bool"),
-                "i8*" => self.code.push_str("[{} x i8], [{} x i8]* @.str"),
+                "i8*" => {
+                    if let Expression::Str(s) = (*args[0]).clone() {
+                        self.code.push_str(format!("[{} x i8], [{0} x i8]* @.string.{}", s.len() + 1, self.str_num).as_str());
+                    }
+                },
                 _ => {},
             }
-            self.begins.push_str(format!("@.{} = constant [3 x i8] c\"%{}\\00\"\n\n", args[0].validate(), match args[0].validate() {
+            if args[0].validate() != "string" {
+                self.begins.push_str(format!("@.{} = constant [3 x i8] c\"%{}\\00\"\n\n", args[0].validate(), match args[0].validate() {
                     "int" => "d",
                     "dec" => "f",
                     "bool" => "d",
                     "string" => "s",
                     _ => "",
-            }).as_str());
+                }).as_str());
+            } else {
+                if let Expression::Str(s) = (*args[0]).clone() {
+                    self.begins.push_str(format!("@.string.{} = constant [{} x i8] c\"{}\\00\"\n\n", self.str_num, s.len() + 1, s).as_str());
+                    self.str_num += 1;
+                    self.ends.push_str("declare i32 @printf(i8*, ...)\n");
+                    self.code.push_str(", i32 0, i32 0))\n");
+                    return;
+                }
+            }
             self.ends.push_str("declare i32 @printf(i8*, ...)\n");
             self.code.push_str(", i32 0, i32 0), ");
         } else {

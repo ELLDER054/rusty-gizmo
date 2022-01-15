@@ -8,13 +8,12 @@ use self::token::TokenType;
 
 // Stores information for a "Lexer"
 pub struct Lexer {
-    pub pos: usize, // Current position in code
+    pub pos: usize,   // Current position in code
     pub code: String, // Input string
-    pub col: usize, // Current column in the code
+    pub col: usize,   // Current column in the code
 }
 
 impl Lexer {
-
     // Returns whether or not "c" is a valid identifier start
     fn is_identifier_start(&self, c: char) -> bool {
         (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'
@@ -119,9 +118,6 @@ impl Lexer {
                     // Advance and consume the '"'
                     self.advance();
 
-                    // Add the '"' to the allocated "string" variable
-                    string.push('"');
-
                     // Loop until the end of the string
                     while c != '"' {
                         // When it reaches the end of the line without finding
@@ -140,11 +136,9 @@ impl Lexer {
                         // Advance our position and column
                         self.advance();
                     }
+
                     // Advance and consume the second '"'
                     self.advance();
-
-                    // Add the second '"' to the "string" variable
-                    string.push('"');
 
                     // Return the new string token
                     (string.as_str(), TokenType::Str)
@@ -240,9 +234,11 @@ impl Lexer {
                     continue;
                 },
             };
+
             // Add the token to the tokens vector
             tokens.push(Token {typ: typ, value : value.to_string(), lineno: lineno, col: begin, line: line.to_string()});
         }
+
         // Returns the tokens vector
         return tokens;
     }

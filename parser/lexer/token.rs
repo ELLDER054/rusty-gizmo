@@ -10,22 +10,30 @@ pub struct Token {
 // An enum with all the tokens for the language
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
-    PlusEqual,
-    PlusPlus,
-    Plus,
-    DashEqual,
-    DashDash,
-    Dash,
-    StarEqual,
-    StarStar,
-    Star,
-    SlashEqual,
-    SlashSlash,
-    Slash,
-    NotEqual,
-    SemiColon,
-    LeftParen,
-    RightParen,
+    PlusEqual,    // +=
+    PlusPlus,     // ++
+    Plus,         // +
+    DashEqual,    // -=
+    DashDash,     // --
+    Dash,         // -
+    StarEqual,    // *=
+    StarStar,     // **
+    Star,         // *
+    SlashEqual,   // /=
+    SlashSlash,   // //
+    Slash,        // /
+    NotEqual,     // !=
+    SemiColon,    // ;
+    LeftParen,    // (
+    RightParen,   // )
+    Equal,        // =
+    EqualEqual,   // ==
+    LessThan,     // <
+    GreaterThan,  // >
+    LessEqual,    // <=
+    GreaterEqual, // >=
+    Colon,        // :
+    Comma,        // ,
     Let,
     If,
     While,
@@ -33,19 +41,11 @@ pub enum TokenType {
     Id,
     Int,
     Dec,
+    Bool,
     Str,
-    Equal,
-    EqualEqual,
-    Not,
-    LessThan,
-    GreaterThan,
-    LessEqual,
-    GreaterEqual,
     Type,
     And,
     Or,
-    Bool,
-    Colon,
-    Comma,
+    Not,
     Error,
 }

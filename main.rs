@@ -5,8 +5,8 @@ use std::fs;
 use parser::lexer::Lexer;
 use parser::lexer::token::Token;
 use parser::Parser;
+use parser::symbol::Scope;
 use parser::symbol::SymbolController;
-use parser::symbol::SymbolTable;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -20,6 +20,7 @@ fn main() {
     /*for token in tokens.iter() {
         println!("VALUE: {}, LINENO: {}, COL: {}, LINE: {}", token.value, token.lineno, token.col, token.line);
     }*/
-    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: SymbolController {current: SymbolTable {parent: None, child: None, group: Vec::new()}, global: SymbolTable {parent: None, child: None, group: Vec::new()}}, id_c: 0};
+    let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), symbols: Vec::new()}};
+    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0};
     parser.parse();
 }
