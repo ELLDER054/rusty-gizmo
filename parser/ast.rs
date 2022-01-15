@@ -4,6 +4,7 @@ pub enum Node {
     Let {
         id: String,
         expr: Box<Expression>,
+        gen_id: String,
     },
     FuncCall {
         id: String,
@@ -19,6 +20,7 @@ pub enum Expression {
     Dec(String),
     Bool(bool),
     Str(String),
+    Id(String, String, Vec<String>, String),
     BinaryOperator {
         oper: String,
         left: Box<Expression>,
@@ -124,6 +126,7 @@ impl Expression {
             Expression::Dec(_d) => "dec",
             Expression::Bool(_b) => "bool",
             Expression::Str(_s) => "string",
+            Expression::Id(_i, t, _a, gen_id) => t,
             Expression::BinaryOperator {oper, left, right} => self.binary_rules(oper, left, right),
             Expression::UnaryOperator {oper, child} => self.unary_rules(oper, child),
             Expression::Non => "",

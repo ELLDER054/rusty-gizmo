@@ -1,6 +1,7 @@
 pub mod lexer;
 mod ast;
 mod generator;
+pub mod symbol;
 
 use std::fs::File;
 use std::io::Write;
@@ -12,11 +13,15 @@ use self::lexer::error::ErrorType;
 use self::ast::Node;
 use self::ast::Expression;
 use self::generator::Generator;
+use self::symbol::SymbolTable;
+use self::symbol::SymbolController;
 
 // Stores information for a "Parser"
 pub struct Parser {
     pub pos: usize, // Current position in tokens
     pub tokens: Vec<Token>, // Input list of tokens
+    pub symtable: SymbolController,
+    pub id_c: usize,
 }
 
 // Implement functions for a "Parser"
@@ -173,6 +178,10 @@ impl Parser {
         if boolean {
             return Expression::Bool(if self.tokens[self.pos - 1].value == "true" {true} else {false});
         }
+        let id: bool = self.expect_type(TokenType::Id);
+        if id {
+            return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), self.symtable.find_symbol((&self.tokens[self.pos - 1].value).to_string(), "var".to_string(), Vec::new()).unwrap().typ, Vec::new(), self.symtable.find_symbol((&self.tokens[self.pos - 1].value).to_string(), "var".to_string(), Vec::new()).unwrap().gen_id);
+        }
 
         // Nothing is found, return Non
         return Expression::Non;
@@ -300,7 +309,6 @@ impl Parser {
         }
         
         // If the type of the expression has a type-checker error, print error
-        println!("{}", expr.validate());
         if expr.validate() == "error" {
             let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "This type does not match the type of the expression", helpers: "".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
@@ -321,7 +329,10 @@ impl Parser {
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
-        return Node::Let {id: (&self.tokens[save].value).to_string(), expr: Box::new(expr)};
+
+        self.symtable.add_symbol((&self.tokens[save].value).to_string(), expr.validate().to_string(), "var".to_string(), Vec::new(), format!("%.{}", self.id_c));
+        self.id_c += 1;
+        return Node::Let {id: (&self.tokens[save].value).to_string(), expr: Box::new(expr), gen_id: format!("%.{}", self.id_c - 1)};
     }
 
     // Parses a series of statements based off of the input tokens
@@ -340,8 +351,8 @@ impl Parser {
 
             // Check for a let statement
             if let_stmt != Node::Non {
-                if let Node::Let {id, expr} = let_stmt {
-                    nodes.push(Node::Let {id, expr});
+                if let Node::Let {id, expr, gen_id} = let_stmt {
+                    nodes.push(Node::Let {id, expr, gen_id});
                     continue;
                 }
             }
@@ -372,6 +383,10 @@ impl Parser {
 
     // Resets the position and calls "program()"
     pub fn parse(&mut self) {
+        self.symtable = SymbolController {global: SymbolTable {parent: None, child: None, group: Vec::new()}, current: SymbolTable {parent: None, child: None, group: Vec::new()}};
+        self.symtable.add_symbol("abc".to_string(), "int".to_string(), "func".to_string(), Vec::new(), format!("%.{}", self.id_c));
+        assert_ne!(self.symtable.find_symbol("abc".to_string(), "func".to_string(), Vec::new()), None);
+        assert_eq!(self.symtable.find_symbol("def".to_string(), "func".to_string(), Vec::new()), None);
         self.pos = 0;
         self.program(0);
     }

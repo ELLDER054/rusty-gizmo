@@ -38,7 +38,7 @@ impl Generator {
         for node in ast.iter() {
             match node {
                 // Match node for each type of Node
-                Node::Let {id: _, expr} => self.gen_let_stmt(&expr),
+                Node::Let {id: _, expr, gen_id} => self.gen_let_stmt(&expr, gen_id.to_string()),
                 Node::FuncCall {id, args} => self.gen_func_call(id.to_string(), args),
                 Node::Non => {},
             };
@@ -56,6 +56,12 @@ impl Generator {
             Expression::Dec(d) => d.to_string(),
             Expression::Bool(b) => if b {"1".to_string()} else {"0".to_string()},
             Expression::Str(s) => s,
+            Expression::Id(_i, t, _a, gen_id) => {
+                let typ = type_of(t);
+                self.code.push_str(format!("\t%{} = load {}, {}* {}\n", self.name_num, typ, typ, gen_id).as_str());
+                self.name_num += 1;
+                format!("%{}", self.name_num - 1)
+            },
             // When a binary operator is found, generate ir for it
             Expression::BinaryOperator {oper, left, right} => {
                 // Recursively generate ir for the left and right side
@@ -100,7 +106,7 @@ impl Generator {
     }
 
     // Generate ir for a let statement
-    pub fn gen_let_stmt(&mut self, expr: &Box<Expression>) {
+    pub fn gen_let_stmt(&mut self, expr: &Box<Expression>, gen_id: String) {
         // Generate ir for the expression of the let statement
         let gen_expr = self.gen_expr(expr);
 
@@ -108,8 +114,8 @@ impl Generator {
         let typ = type_of(expr.validate().to_string());
         
         // Add the ir to the code for the "Generator"
-        self.code.push_str(format!("\t%{} = alloca {}\n", self.name_num, typ).as_str());
-        self.code.push_str(format!("\tstore {} {}, {0}* %{}\n", typ, gen_expr, self.name_num).as_str());
+        self.code.push_str(format!("\t{} = alloca {}\n", gen_id, typ).as_str());
+        self.code.push_str(format!("\tstore {} {}, {0}* {}\n", typ, gen_expr, gen_id).as_str());
     }
 
     // Generate ir for a function call
