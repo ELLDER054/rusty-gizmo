@@ -17,9 +17,9 @@ fn main() {
     let file: String = fs::read_to_string(&args[1]).unwrap();
     let mut lexer: Lexer = Lexer {pos: 0, code: file, col: 0};
     let tokens: Vec<Token> = lexer.lex();
-    /*for token in tokens.iter() {
-        println!("VALUE: {}, LINENO: {}, COL: {}, LINE: {}", token.value, token.lineno, token.col, token.line);
-    }*/
+    for token in tokens.iter() {
+        println!("{:?}", token);
+    }
     let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), symbols: Vec::new()}};
     let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0};
     parser.parse();

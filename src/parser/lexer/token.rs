@@ -1,4 +1,5 @@
 // Stores each token's information
+#[derive(Debug, PartialEq, Eq)]
 pub struct Token {
     pub typ: TokenType,
     pub value: String,

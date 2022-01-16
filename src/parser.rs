@@ -27,18 +27,18 @@ pub struct Parser {
 // Implement functions for a "Parser"
 impl Parser {
 
-    // Returns true if the type of the current token equals "t"
-    fn expect_type(&mut self, t: TokenType) -> bool {
-        // Returns false if the position is at the end of the input
+    // Returns the current token if the type of the current token equals "t"
+    fn expect_type(&mut self, t: TokenType) -> Option<String> {
+        // Returns None if the position is at the end of the input
         if self.pos >= self.tokens.len() {
-            return false
+            return None
         }
         if self.tokens[self.pos].typ == t {
             // Increment the position if we succeed
             self.pos += 1;
-            return true;
+            return Some((&self.tokens[self.pos - 1].value).to_string());
         }
-        return false;
+        return None;
     }
 
     // Returns a recursively parsed expression node
@@ -54,7 +54,7 @@ impl Parser {
         let mut expr = self.comparison(self.pos);
 
         // Continue expecting an operator with another side of the expression after it
-        while self.expect_type(TokenType::EqualEqual) || self.expect_type(TokenType::NotEqual) {
+        while self.expect_type(TokenType::EqualEqual) != None || self.expect_type(TokenType::NotEqual) != None {
             let save = self.pos - 1;
             let right = self.comparison(self.pos);
 
@@ -77,7 +77,7 @@ impl Parser {
         let mut expr = self.term(self.pos);
 
         // Continue expecting an operator with another side of the expression after it
-        while self.expect_type(TokenType::GreaterThan) || self.expect_type(TokenType::LessThan) || self.expect_type(TokenType::GreaterEqual) || self.expect_type(TokenType::LessEqual) {
+        while self.expect_type(TokenType::GreaterThan) != None || self.expect_type(TokenType::LessThan) != None || self.expect_type(TokenType::GreaterEqual) != None || self.expect_type(TokenType::LessEqual) != None {
             let save = self.pos - 1;
             let right = self.term(self.pos);
 
@@ -100,7 +100,7 @@ impl Parser {
         let mut expr = self.factor(self.pos);
 
         // Continue expecting an operator with another side of the expression after it
-        while self.expect_type(TokenType::Plus) || self.expect_type(TokenType::Dash) {
+        while self.expect_type(TokenType::Plus) != None || self.expect_type(TokenType::Dash) != None {
             let save = self.pos - 1;
             let right = self.factor(self.pos);
 
@@ -123,7 +123,7 @@ impl Parser {
         let mut expr = self.unary(self.pos);
 
         // Continue expecting an operator with another side of the expression after it
-        while self.expect_type(TokenType::Star) || self.expect_type(TokenType::Slash) {
+        while self.expect_type(TokenType::Star) != None || self.expect_type(TokenType::Slash) != None {
             let save = self.pos - 1;
             let right = self.unary(self.pos);
 
@@ -143,7 +143,7 @@ impl Parser {
         self.pos = start;
 
         // Expect a unary operator followed by an expression
-        if self.expect_type(TokenType::Not) || self.expect_type(TokenType::Dash) {
+        if self.expect_type(TokenType::Not) != None || self.expect_type(TokenType::Dash) != None {
             let save = self.pos - 1;
             let right = self.unary(self.pos);
 
@@ -162,24 +162,24 @@ impl Parser {
         self.pos = start;
 
         // Expect an expression constant
-        let int: bool = self.expect_type(TokenType::Int);
-        if int {
+        let int = self.expect_type(TokenType::Int);
+        if int != None {
             return Expression::Int(self.tokens[self.pos - 1].value.parse().unwrap());
         }
-        let dec: bool = self.expect_type(TokenType::Dec);
-        if dec {
+        let dec = self.expect_type(TokenType::Dec);
+        if dec != None {
             return Expression::Dec(self.tokens[self.pos - 1].value.parse().unwrap());
         }
-        let string: bool = self.expect_type(TokenType::Str);
-        if string {
+        let string = self.expect_type(TokenType::Str);
+        if string != None {
             return Expression::Str(self.tokens[self.pos - 1].value.as_str().to_string());
         }
-        let boolean: bool = self.expect_type(TokenType::Bool);
-        if boolean {
+        let boolean = self.expect_type(TokenType::Bool);
+        if boolean != None {
             return Expression::Bool(if self.tokens[self.pos - 1].value == "true" {true} else {false});
         }
-        let id: bool = self.expect_type(TokenType::Id);
-        if id {
+        let id = self.expect_type(TokenType::Id);
+        if id != None {
             let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, Vec::new());
             return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), Vec::new(), sym.gen_id.clone());
         }
@@ -193,16 +193,15 @@ impl Parser {
         self.pos = start;
 
         // Expect an identifier
-        let id: bool = self.expect_type(TokenType::Id);
-        let save = self.pos - 1;
-        if !id {
+        let id = self.expect_type(TokenType::Id);
+        if id == None {
             self.pos = start;
             return Node::Non;
         }
         
         // Expect a left parenthesis to follow the identifier
-        let lp: bool = self.expect_type(TokenType::LeftParen);
-        if !lp {
+        let lp = self.expect_type(TokenType::LeftParen);
+        if lp == None {
             let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected left parenthesis after this identifier", helpers: "help: Insert a left parenthesis".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
@@ -226,28 +225,28 @@ impl Parser {
                 std::process::exit(1);
             }
             args.push(Box::new(expr));
-            let comma: bool = self.expect_type(TokenType::Comma);
-            if !comma {
+            let comma = self.expect_type(TokenType::Comma);
+            if comma == None {
                 break;
             }
         }
 
         // Expect a right parenthesis to follow the arguments
-        let rp: bool = self.expect_type(TokenType::RightParen);
-        if !rp {
+        let rp = self.expect_type(TokenType::RightParen);
+        if rp == None {
             let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected right parenthesis after this argument", helpers: "help: Insert a right parenthesis".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
         
         // Expect a semi-colon after the right parenthesis
-        let semi: bool = self.expect_type(TokenType::SemiColon);
-        if  !semi {
+        let semi = self.expect_type(TokenType::SemiColon);
+        if semi == None {
             let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected semi-colon after this parenthesis", helpers: "help: Insert a semi-colon after this parenthesis".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
-        return Node::FuncCall {id: (&self.tokens[save].value).to_string(), args: args};
+        return Node::FuncCall {id: id.unwrap(), args: args};
     }
 
     // Parses a let statement
@@ -255,37 +254,35 @@ impl Parser {
         self.pos = start;
 
         // Expect the "let" keyword
-        let key: bool = self.expect_type(TokenType::Let);
-        if !key {
+        let key = self.expect_type(TokenType::Let);
+        if key == None {
             self.pos = start;
             return Node::Non;
         }
         
         // Expect an identifier after the "let" keyword
-        let id: bool = self.expect_type(TokenType::Id);
-        if !id {
+        let id = self.expect_type(TokenType::Id);
+        if id == None {
             let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected identifier after this let", helpers: "help: Insert an identifier".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
-        let save: usize = self.pos - 1;
 
         // Expect an equals sign after the identifer
-        let mut eq: bool = self.expect_type(TokenType::Equal);
+        let mut eq = self.expect_type(TokenType::Equal);
         let mut save_type_pos = 0;
-        if !eq {
-
+        if eq == None {
             // If we don't find an equals sign, look for a colon
             eq = self.expect_type(TokenType::Colon);
-            if !eq {
+            if eq == None {
                 let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected equals sign or colon after this identifier", helpers: "help: Insert an equals sign or a colon".to_string()};
                 err.emit_error(&self.tokens[self.pos - 1]);
                 std::process::exit(1);
             }
 
             // Expect a type after the colon
-            let typ: bool = self.expect_type(TokenType::Type);
-            if !typ {
+            let typ = self.expect_type(TokenType::Type);
+            if typ == None {
                 let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected type after this colon", helpers: "help: Insert a type after this colon".to_string()};
                 err.emit_error(&self.tokens[self.pos - 1]);
                 std::process::exit(1);
@@ -294,7 +291,7 @@ impl Parser {
 
             // Once we find a type, look again for an equals sign
             eq = self.expect_type(TokenType::Equal);
-            if !eq {
+            if eq == None {
                 let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected equals sign after this colon", helpers: "help: Insert an equals sign here".to_string()};
                 err.emit_error(&self.tokens[self.pos - 1]);
                 std::process::exit(1);
@@ -324,16 +321,16 @@ impl Parser {
         }
 
         // Expect a semi-colon after the expression
-        let semi: bool = self.expect_type(TokenType::SemiColon);
-        if  !semi {
+        let semi = self.expect_type(TokenType::SemiColon);
+        if semi == None {
             let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected semi-colon after this expression", helpers: "help: Insert a semi-colon after this expression".to_string()};
             err.emit_error(&self.tokens[self.pos - 1]);
             std::process::exit(1);
         }
 
-        self.symtable.add_symbol((&self.tokens[save].value).to_string(), expr.validate().to_string(), SymbolType::Var, format!("%.{}", self.id_c), Vec::new());
+        self.symtable.add_symbol(id.clone().unwrap(), expr.validate().to_string(), SymbolType::Var, format!("%.{}", self.id_c), Vec::new());
         self.id_c += 1;
-        return Node::Let {id: (&self.tokens[save].value).to_string(), expr: Box::new(expr), gen_id: format!("%.{}", self.id_c - 1)};
+        return Node::Let {id: id.unwrap(), expr: Box::new(expr), gen_id: format!("%.{}", self.id_c - 1)};
     }
 
     // Parses a series of statements based off of the input tokens
