@@ -12,5 +12,9 @@ git clone https://github.com/ELLDER054/rusty-gizmo.git
 Then, go to the directory and use cargo to build it.  
 ```shell
 cd rusty-gizmo
-cargo build
+cargo install --path .
+```
+Now you can use the `rustygizmo` command to run gizmo files.  
+```
+rustygizmo file.gizmo
 ```
