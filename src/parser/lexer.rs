@@ -6,36 +6,41 @@ use self::error::Error;
 use self::error::ErrorType;
 use self::token::TokenType;
 
-// Stores information for a "Lexer"
+/// Stores information for a "Lexer"
 pub struct Lexer {
-    pub pos: usize,   // Current position in code
-    pub code: String, // Input string
-    pub col: usize,   // Current column in the code
+    /// Current position in `code`
+    pub pos: usize,
+
+    /// Input string
+    pub code: String,
+
+    /// Current column in the code
+    pub col: usize,
 }
 
 impl Lexer {
-    // Returns whether or not "c" is a valid identifier start
+    /// Returns whether or not "c" is a valid identifier start
     fn is_identifier_start(&self, c: char) -> bool {
         (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '_'
     }
 
-    // Returns whether or not "c" is a valid digit
+    /// Returns whether or not "c" is a valid digit
     fn is_digit(&self, c: char) -> bool {
         c >= '0' && c <= '9'
     }
 
-    // Returns whether or not "c" is a valid continuing identifier character
+    /// Returns whether or not "c" is a valid continuing identifier character
     fn is_identifier(&self, c: char) -> bool {
         self.is_identifier_start(c) || self.is_digit(c)
     }
 
-    // Advances current place in code by incrementing position and column
+    /// Advances current place in code by incrementing position and column
     fn advance(&mut self) {
         self.pos += 1;
         self.col += 1;
     }
 
-    // Returns the next character in code
+    /// Returns the next character in code
     fn peek(&self) -> char {
         // If the next character is past the end of the input, return ' '
         if self.pos + 1 >= self.code.len() {
@@ -44,7 +49,7 @@ impl Lexer {
         return self.code.chars().nth(self.pos + 1).unwrap();
     }
 
-    // Loops through the input and collects the tokens
+    /// Loops through the input and collects the tokens
     pub fn lex(&mut self) -> Vec<Token> {
         // Initialize a new vector to store the tokens
         let mut tokens: Vec<Token> = Vec::new();
@@ -90,6 +95,8 @@ impl Lexer {
                 '/' => {self.advance(); ("/", TokenType::Slash)},
                 '(' => {self.advance(); ("(", TokenType::LeftParen)},
                 ')' => {self.advance(); (")", TokenType::RightParen)},
+                '{' => {self.advance(); ("{", TokenType::LeftBrace)},
+                '}' => {self.advance(); ("}", TokenType::RightBrace)},
                 '=' if self.peek() == '=' => {self.advance(); self.advance(); ("==", TokenType::EqualEqual)},
                 '=' => {self.advance(); ("=", TokenType::Equal)},
                 ';' => {self.advance(); (";", TokenType::SemiColon)},
@@ -99,6 +106,7 @@ impl Lexer {
                 '<' => {self.advance(); ("<", TokenType::LessThan)},
                 ':' => {self.advance(); (":", TokenType::Colon)},
                 ',' => {self.advance(); (",", TokenType::Comma)},
+                '.' => {self.advance(); (".", TokenType::Dot)},
                 // Ignore whitespace
                 ' ' | '\t' => {
                     self.advance();
@@ -159,9 +167,8 @@ impl Lexer {
                     // Match the identifier against all the keywords to find the appropriate token type
                     let id_type: TokenType = match name.as_str() {
                         "let" => TokenType::Let,
-                        "if" => TokenType::If,
-                        "while" => TokenType::While,
-                        "for" => TokenType::For,
+                        "new" => TokenType::New,
+                        "struct" => TokenType::Struct,
                         "not" => TokenType::Not,
                         "and" => TokenType::And,
                         "or" => TokenType::Or,
@@ -271,20 +278,19 @@ fn test_operators() {
 
 #[test]
 fn test_identifiers_keywords_types() {
-    let mut lexer = Lexer {code: "abc int dec bool string if let while for and or not".to_string(), col: 0, pos: 0};
+    let mut lexer = Lexer {code: "abc int dec bool string let struct new and or not".to_string(), col: 0, pos: 0};
     assert_eq!(lexer.lex(), vec![
 		Token {typ: TokenType::Id, value: "abc".to_string(), lineno: 1, col: 0, line: lexer.code.clone()},
 		Token {typ: TokenType::Type, value: "int".to_string(), lineno: 1, col: 4, line: lexer.code.clone()},
 		Token {typ: TokenType::Type, value: "dec".to_string(), lineno: 1, col: 8, line: lexer.code.clone()},
 		Token {typ: TokenType::Type, value: "bool".to_string(), lineno: 1, col: 12, line: lexer.code.clone()},
 		Token {typ: TokenType::Type, value: "string".to_string(), lineno: 1, col: 17, line: lexer.code.clone()},
-		Token {typ: TokenType::If, value: "if".to_string(), lineno: 1, col: 24, line: lexer.code.clone()},
-		Token {typ: TokenType::Let, value: "let".to_string(), lineno: 1, col: 27, line: lexer.code.clone()},
-		Token {typ: TokenType::While, value: "while".to_string(), lineno: 1, col: 31, line: lexer.code.clone()},
-		Token {typ: TokenType::For, value: "for".to_string(), lineno: 1, col: 37, line: lexer.code.clone()},
-		Token {typ: TokenType::And, value: "and".to_string(), lineno: 1, col: 41, line: lexer.code.clone()},
-		Token {typ: TokenType::Or, value: "or".to_string(), lineno: 1, col: 45, line: lexer.code.clone()},
-		Token {typ: TokenType::Not, value: "not".to_string(), lineno: 1, col: 48, line: lexer.code.clone()}
+		Token {typ: TokenType::Let, value: "let".to_string(), lineno: 1, col: 24, line: lexer.code.clone()},
+		Token {typ: TokenType::Struct, value: "struct".to_string(), lineno: 1, col: 28, line: lexer.code.clone()},
+		Token {typ: TokenType::New, value: "new".to_string(), lineno: 1, col: 35, line: lexer.code.clone()},
+		Token {typ: TokenType::And, value: "and".to_string(), lineno: 1, col: 39, line: lexer.code.clone()},
+		Token {typ: TokenType::Or, value: "or".to_string(), lineno: 1, col: 43, line: lexer.code.clone()},
+		Token {typ: TokenType::Not, value: "not".to_string(), lineno: 1, col: 46, line: lexer.code.clone()}
     ]);
 }
 

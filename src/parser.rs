@@ -16,18 +16,24 @@ use self::generator::Generator;
 use self::symbol::SymbolController;
 use self::symbol::SymbolType;
 
-// Stores information for a "Parser"
+/// Stores information for a "Parser"
 pub struct Parser {
-    pub pos: usize, // Current position in tokens
-    pub tokens: Vec<Token>, // Input list of tokens
+    /// Current position in tokens
+    pub pos: usize,
+
+    /// Input list of tokens
+    pub tokens: Vec<Token>,
+
+    /// Initialize a symbol table
     pub symtable: SymbolController,
+
+    /// Counts the identifiers created
     pub id_c: usize,
 }
 
-// Implement functions for a "Parser"
+/// Implement functions for a "Parser"
 impl Parser {
-
-    // Returns the current token if the type of the current token equals "t"
+    /// Returns the current token if the type of the current token equals "t"
     fn expect_type(&mut self, t: TokenType) -> Option<String> {
         // Returns None if the position is at the end of the input
         if self.pos >= self.tokens.len() {
@@ -41,13 +47,15 @@ impl Parser {
         return None;
     }
 
-    // Returns a recursively parsed expression node
+    /// Returns a recursively parsed expression node
     fn expression(&mut self, start: usize) -> Expression {
         self.pos = start;
         return self.equality(start);
     }
 
-    // Parse an equality operation (i.e., a == b, a != b)
+    /// Parse an equality operation
+    /// # Example
+    /// `a == b` or `a != b`
     fn equality(&mut self, start: usize) -> Expression {
         self.pos = start;
         // Parse the left hand side of the expression
@@ -70,6 +78,9 @@ impl Parser {
         return expr;
     }
 
+    /// Parse a comparison operation
+    /// # Example
+    /// `a < b`, `a > b`, `a <= b` or `a >= b`
     fn comparison(&mut self, start: usize) -> Expression {
         self.pos = start;
 
@@ -93,6 +104,9 @@ impl Parser {
         return expr;
     }
 
+    /// Parse a term
+    /// # Example
+    /// `a + b` or `a - b`
     fn term(&mut self, start: usize) -> Expression {
         self.pos = start;
 
@@ -116,6 +130,9 @@ impl Parser {
         return expr;
     }
 
+    /// Parse a factor
+    /// # Example
+    /// `a * b` or `a / b`
     fn factor(&mut self, start: usize) -> Expression {
         self.pos = start;
 
@@ -139,6 +156,9 @@ impl Parser {
         return expr;
     }
 
+    /// Parse a unary operation
+    /// # Example
+    /// `-a` or `not a`
     fn unary(&mut self, start: usize) -> Expression {
         self.pos = start;
 
@@ -158,6 +178,7 @@ impl Parser {
         return self.primary(start);
     }
 
+    /// Parse a constant value
     fn primary(&mut self, start: usize) -> Expression {
         self.pos = start;
 
@@ -178,9 +199,17 @@ impl Parser {
         if boolean != None {
             return Expression::Bool(if self.tokens[self.pos - 1].value == "true" {true} else {false});
         }
+        let ns = self.new_struct(self.pos);
+        if ns != Expression::Non {
+            return ns;
+        }
+        let rec_id = self.rec_identifier(self.pos);
+        if rec_id != Expression::Non {
+            return rec_id;
+        }
         let id = self.expect_type(TokenType::Id);
         if id != None {
-            let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, Vec::new());
+            let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, None);
             return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), Vec::new(), sym.gen_id.clone());
         }
 
@@ -188,7 +217,243 @@ impl Parser {
         return Expression::Non;
     }
 
-    // Parses a function call
+    /// Parse a struct initialization
+    /// # Example
+    /// new Foo(5, 6, 7)
+    fn new_struct(&mut self, start: usize) -> Expression {
+        self.pos = start;
+
+        // Expect the 'new' keyword
+        let key = self.expect_type(TokenType::New);
+        if key != None {
+            // If we found the 'new' keyword, expect an identifier
+            let id = self.expect_type(TokenType::Id);
+            if id == None {
+                self.pos = start;
+                return Expression::Non;
+            }
+
+            // Expect a left parenthesis
+            let lp = self.expect_type(TokenType::LeftParen);
+            if lp == None {
+                self.pos = start;
+                return Expression::Non;
+            }
+
+            // Create a vector to store the fields
+            let mut fields: Vec<Expression> = Vec::new();
+
+            // Expect multiple fields followed by commas
+            loop {
+                // Expect an expression
+                let expr = self.expression(self.pos);
+                if expr == Expression::Non {
+                    self.pos = start;
+                    return Expression::Non;
+                }
+
+                // Push the expression to fields
+                fields.push(expr);
+
+                // Expect a comma
+                // Not finding a comma tells the compiler to stop parsing fields
+                let comma = self.expect_type(TokenType::Comma);
+                if comma == None {
+                    break;
+                }
+            }
+            
+            // Expect a right parenthesis
+            let rp = self.expect_type(TokenType::RightParen);
+            if rp == None {
+                self.pos = start;
+                return Expression::Non;
+            }
+            
+            // Return the struct initialization
+            return Expression::NewStruct {id: id.unwrap(), fields: fields};
+        }
+        return Expression::Non;
+    }
+
+    /// Parses an identifier
+    /// # Example
+    /// `a`, `a.b`, `a.b.c`, etc
+    fn rec_identifier(&mut self, start: usize) -> Expression {
+        self.pos = start;
+
+        // Expect a struct initialization
+        // This is because it is possible to have something like:
+        // let bar = new Foo(5, 6, 7).bar
+        let mut begin = self.new_struct(self.pos);
+        if begin == Expression::Non {
+            // If we didn't find the struct initialization, we can just expect an identifier
+            let id = self.expect_type(TokenType::Id);
+            if id == None {
+                self.pos = start;
+                return Expression::Non;
+            }
+
+            // Find the symbol in the symbol table, printing an error if it was not found
+            let mut id_sym = self.symtable.find(id.clone().unwrap(), SymbolType::Var, None);
+            if id_sym == None {
+                id_sym = Some(self.symtable.find_error(id.clone().unwrap(), SymbolType::Struct, None));
+            }
+            begin = Expression::Id(id.clone().unwrap(), id_sym.unwrap().typ.clone(), Vec::new(), id_sym.unwrap().gen_id.clone());
+        }
+
+        // Expect a dot
+        let dot = self.expect_type(TokenType::Dot);
+        if dot == None {
+            self.pos = start;
+            return Expression::Non;
+        }
+
+        // Expect another identifier
+        let id2 = self.expect_type(TokenType::Id);
+        if id2 == None {
+            self.pos = start;
+            return Expression::Non;
+        }
+
+        // Find the field number of the field
+        let mut field_num = 0;
+        println!("{}", begin.clone().validate());
+        let sym = self.symtable.find(begin.clone().validate().to_string(), SymbolType::Struct, None);
+        if sym == None {
+            return Expression::Non;
+        }
+        for field in sym.unwrap().arg_types.iter() {
+            if field.0 == id2.clone().unwrap() {
+                println!("327");
+                return Expression::StructDot {id: Box::new(begin.clone()), id2: id2.unwrap(), typ: sym.unwrap().arg_types[0].clone().1, field_num: field_num};
+            }
+            field_num += 1;
+        }
+        self.pos = start;
+        return Expression::Non;
+    }
+
+    /// Parses a type
+    /// # Example
+    /// `struct Foo` or `int`
+    fn rec_type(&mut self, start: usize) -> Option<String> {
+        self.pos = start;
+
+        // Expect the 'struct' keyword
+        let key = self.expect_type(TokenType::Struct);
+        if key == None {
+            // If the struct keyword was not found, find a basic type and return
+            let typ = self.expect_type(TokenType::Type);
+            if typ == None {
+                self.pos = start;
+                return None;
+            }
+            return Some(typ.clone().unwrap());
+        }
+
+        // Expect an identifier
+        // The identifier must also be a struct
+        let typ = self.expect_type(TokenType::Id);
+        if typ == None || self.symtable.find(typ.clone().unwrap(), SymbolType::Struct, None) == None {
+            self.pos = start;
+            return None;
+        }
+        return Some(format!("{}", typ.unwrap()).clone());
+    }
+
+    /// Parses a struct definition
+    /// # Example
+    /// struct Foo {
+    ///     bar: int
+    /// }
+    fn struct_def(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Expect the 'struct' keyword
+        let key = self.expect_type(TokenType::Struct);
+        if key == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        // Expect an identifier to follow the keyword
+        let id = self.expect_type(TokenType::Id);
+        if id == None {
+            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected an identifier", helpers: "help: Insert an identifier".to_string()};
+            err.emit_error(&self.tokens[self.pos - 1]);
+            std::process::exit(1);
+        }
+        
+        // Expect a left curly brace to follow the identifier
+        let lb = self.expect_type(TokenType::LeftBrace);
+        if lb == None {
+            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected left curly brace after this identifier", helpers: "help: Insert a left curly brace".to_string()};
+            err.emit_error(&self.tokens[self.pos - 1]);
+            std::process::exit(1);
+        }
+
+        // Parse a series of struct fields followed by commas. If the comma is
+        // not found, stop parsing fields
+        let mut fields: Vec<(String, String)> = Vec::new();
+        loop {
+            // Expect an identifier
+            let id = self.expect_type(TokenType::Id);
+            if id == None {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected an identifier", helpers: "help: Insert an identifier after this token".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+
+            // Expect a colon after the identifier
+            let colon = self.expect_type(TokenType::Colon);
+            if colon == None {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected a colon", helpers: "help: Insert a colon after this identifier".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+
+            // Expect a type after the colon
+            let typ = self.rec_type(self.pos);
+            if typ == None {
+                let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected a type", helpers: "help: Insert a type after this colon".to_string()};
+                err.emit_error(&self.tokens[self.pos - 1]);
+                std::process::exit(1);
+            }
+
+            // Push the field onto the list of fields
+            fields.push((id.unwrap(), typ.unwrap()));
+
+            // Expect a comma
+            // If the comma isn't there, stop looking for more fields
+            let comma = self.expect_type(TokenType::Comma);
+            if comma == None {
+                break;
+            }
+        }
+        
+        // Expect a left curly brace to follow the identifier
+        let rb = self.expect_type(TokenType::RightBrace);
+        if rb == None {
+            let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected right curly brace after this struct field", helpers: "help: Insert a right curly brace".to_string()};
+            err.emit_error(&self.tokens[self.pos - 1]);
+            std::process::exit(1);
+        }
+
+        // Add correct symbols
+        let mut types: Vec<(String, String)> = Vec::new();
+        for field in fields.iter() {
+            types.push(field.clone());
+        }
+        self.symtable.add_symbol(id.clone().unwrap(), id.clone().unwrap(), SymbolType::Struct, format!("%.{}", self.id_c), types);
+        
+        // Return the struct node
+        return Node::Struct {id: id.unwrap(), fields: fields};
+    }
+
+    /// Parses a function call
+    /// # Example
+    /// write(5);
     fn func_call(&mut self, start: usize) -> Node {
         self.pos = start;
 
@@ -249,7 +514,11 @@ impl Parser {
         return Node::FuncCall {id: id.unwrap(), args: args};
     }
 
-    // Parses a let statement
+    /// Parses a let statement
+    /// # Example
+    /// let a = 5;
+    /// or
+    /// let a: int = 5;
     fn let_statement(&mut self, start: usize) -> Node {
         self.pos = start;
 
@@ -281,7 +550,7 @@ impl Parser {
             }
 
             // Expect a type after the colon
-            let typ = self.expect_type(TokenType::Type);
+            let typ = self.rec_type(self.pos);
             if typ == None {
                 let err: Error = Error {typ: ErrorType::ExpectedToken, msg: "Expected type after this colon", helpers: "help: Insert a type after this colon".to_string()};
                 err.emit_error(&self.tokens[self.pos - 1]);
@@ -333,7 +602,7 @@ impl Parser {
         return Node::Let {id: id.unwrap(), expr: Box::new(expr), gen_id: format!("%.{}", self.id_c - 1)};
     }
 
-    // Parses a series of statements based off of the input tokens
+    /// Parses a series of statements based off of the input tokens
     fn program(&mut self, mut max_len: usize) {
         if max_len == 0 {
             max_len = self.tokens.len();
@@ -365,6 +634,16 @@ impl Parser {
                     continue;
                 }
             }
+
+            // Check for a struct definition
+            let struct_def = self.struct_def(self.pos);
+            if struct_def != Node::Non {
+                if let Node::Struct {id, fields} = struct_def {
+                    // Push the Node onto the nodes list
+                    nodes.push(Node::Struct {id: id, fields: fields});
+                    continue;
+                }
+            }
             println!("Failure");
             break;
         }
@@ -380,7 +659,7 @@ impl Parser {
         Command::new("lli a.ll");
     }
 
-    // Resets the position and calls "program()"
+    /// Resets the position and calls "program()"
     pub fn parse(&mut self) {
         self.pos = 0;
         self.program(0);

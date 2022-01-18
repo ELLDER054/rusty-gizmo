@@ -3,16 +3,21 @@ use super::token::Token;
 // TODO: Change the way we call an error in other files
 // It is currently too tedious
 
-// Stores the information for each error
+/// Stores the information for each error
 pub struct Error<'a> {
-    pub typ: ErrorType,  // Type of the error
-    pub msg: &'a str,    // Error message
-    pub helpers: String, // Helper messages
+    /// Type of the error
+    pub typ: ErrorType,
+
+    /// Error message
+    pub msg: &'a str,
+
+    /// Helper messages
+    pub helpers: String,
 }
 
-// Implement functions to pretty-print the error's information
+/// Implement functions to pretty-print the error's information
 impl<'a> Error<'_> {
-    // Emits an error with colors and all information
+    /// Emits an error with colors and all information
     pub fn emit_error(&self, token: &Token) {
         let spaces = " ".repeat(token.lineno.to_string().len());
         eprintln!("\x1b[91merror\x1b[0m: \x1b[97m{}\x1b[0m", self.msg_for());
@@ -25,8 +30,7 @@ impl<'a> Error<'_> {
         }
     }
     
-    // Helpers
-    // Returns the base error message for each error type
+    /// Returns the base error message for each error type
     fn msg_for(&self) -> &str {
         return match self.typ {
             ErrorType::StringWithoutEnd => "String never ends",
@@ -37,21 +41,21 @@ impl<'a> Error<'_> {
         }
     }
     
-    // Adds another help message to an error
+    /// Adds another help message to an error
     pub fn note(&mut self, msg: &str) {
         self.helpers.push_str(format!("\n{}", msg).as_str());
     }
 }
 
-// An enum with all the possible error types 
+/// An enum with all the possible error types 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ErrorType {
-    // Lexer errors
+    /// Lexer errors
     StringWithoutEnd,
     UnknownChar,
     DecTooManyDots,
     DecNotFound,
 
-    // Parser errors
+    /// Parser errors
     ExpectedToken,
 }
