@@ -7,7 +7,7 @@ pub enum Node {
     /// let a = 5;
     Let {
         id: String,
-        expr: Box<Expression>,
+        expr: Expression,
         gen_id: String,
     },
 
@@ -62,7 +62,22 @@ pub enum Expression {
     Str(String),
 
     /// Identifier
-    Id(String, String, Vec<String>, String),
+    Id(String, String, String),
+
+    /// Array
+    Array {
+        values: Vec<Expression>,
+        typ: String
+    },
+
+    /// An index
+    /// # Example
+    /// `array[num]` or `string[num]`
+    IndexedValue {
+        src: Box<Expression>,
+        index: Box<Expression>,
+        new_typ: String
+    },
 
     /// Binary operator
     /// # Example
@@ -96,7 +111,7 @@ pub enum Expression {
         id: Box<Expression>,
         id2: String,
         typ: String,
-        field_num: usize
+        field_num: i32
     },
 
     Non,
@@ -113,11 +128,9 @@ impl Expression {
                 "int" => match (*right).validate() {
                     // Once the left side is known, match the right side
                     "int" => "int",
-                    "dec" => "dec",
                     _ => "error",
                 },
                 "dec" => match (*right).validate() {
-                    "int" => "int",
                     "dec" => "dec",
                     _ => "error",
                 },
@@ -136,11 +149,9 @@ impl Expression {
             "-" | "*" | "/" => match (*left).validate() {
                 "int" => match (*right).validate() {
                     "int" => "int",
-                    "dec" => "dec",
                     _ => "error",
                 },
                 "dec" => match (*right).validate() {
-                    "int" => "int",
                     "dec" => "dec",
                     _ => "error",
                 },
@@ -153,11 +164,9 @@ impl Expression {
             ">=" | "<=" | ">" | "<" => match (*left).validate() {
                 "int" => match (*right).validate() {
                     "int" => "int",
-                    "dec" => "dec",
                     _ => "error",
                 },
                 "dec" => match (*right).validate() {
-                    "int" => "int",
                     "dec" => "dec",
                     _ => "error",
                 },
@@ -196,7 +205,9 @@ impl Expression {
             Expression::Dec(_d) => "dec",
             Expression::Bool(_b) => "bool",
             Expression::Str(_s) => "string",
-            Expression::Id(_i, t, _a, _gen_id) => t,
+            Expression::Id(_i, t, _gen_id) => t,
+            Expression::Array {values: _, typ} => typ.as_str(),
+            Expression::IndexedValue {src: _, index: _, new_typ} => new_typ.as_str(),
             Expression::BinaryOperator {oper, left, right} => self.binary_rules(oper, left, right),
             Expression::UnaryOperator {oper, child} => self.unary_rules(oper, child),
             Expression::NewStruct {id, fields: _} => id,

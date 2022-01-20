@@ -2,8 +2,8 @@ pub mod token;
 pub mod error;
 
 use self::token::Token;
-use self::error::Error;
 use self::error::ErrorType;
+use self::error::emit_error;
 use self::token::TokenType;
 
 /// Stores information for a "Lexer"
@@ -97,6 +97,8 @@ impl Lexer {
                 ')' => {self.advance(); (")", TokenType::RightParen)},
                 '{' => {self.advance(); ("{", TokenType::LeftBrace)},
                 '}' => {self.advance(); ("}", TokenType::RightBrace)},
+                '[' => {self.advance(); ("[", TokenType::LeftBracket)},
+                ']' => {self.advance(); ("]", TokenType::RightBracket)},
                 '=' if self.peek() == '=' => {self.advance(); self.advance(); ("==", TokenType::EqualEqual)},
                 '=' => {self.advance(); ("=", TokenType::Equal)},
                 ';' => {self.advance(); (";", TokenType::SemiColon)},
@@ -131,9 +133,8 @@ impl Lexer {
                         // When it reaches the end of the line without finding
                         // a second '"', give error
                         if c == '\n' || c == '\0' {
-                            let error = Error {typ: ErrorType::StringWithoutEnd, msg: "Closing double quote was not found", helpers: "help: Add a closing double quote to signal the end of the string".to_string()};
-                            error.emit_error(&Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: begin + string.len() + 1, line: line.to_string()});
-                            continue;
+                            let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
+                            emit_error("Closing double quote was not found".to_string(), "help: Add a closing double quote to signal the end of the string".to_string(), &empty_token, ErrorType::UnexpectedEOF);
                         }
                         // Add the character to allocated "string" variable
                         string.push(c);
@@ -207,9 +208,8 @@ impl Lexer {
 
                         // If a digit is not found after the dot, print an error
                         if !self.is_digit(c) {
-                            let err = Error {typ: ErrorType::DecNotFound, msg: "", helpers: "help: Take away this dot or insert a number after the dot".to_string()};
-                            err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len(), line: line.to_string()});
-                            continue;
+                            let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
+                            emit_error("Expected number after dot".to_string(), "help: Take away the dot or insert a number after the dot".to_string(), &empty_token, ErrorType::DecNotFound);
                         }
 
                         // Otherwise, continue to collect digits and add to the
@@ -225,10 +225,8 @@ impl Lexer {
                         if c != '.' {
                             typ = TokenType::Dec;
                         } else {
-                            let mut err = Error {typ: ErrorType::DecTooManyDots, msg: "", helpers: "help: Take away this dot".to_string()};
-                            err.note("note: floating point numbers may only have 1 dot");
-                            err.emit_error(&Token {typ: TokenType::Error, value: ".".to_string(), lineno: lineno, col: begin + digit.len() + 1, line: line.to_string()});
-                            continue;
+                            let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
+                            emit_error("Unexpected dot".to_string(), "help: Take away this dot".to_string(), &empty_token, ErrorType::DecTooManyDots);
                         };
                     }
                     
@@ -237,7 +235,8 @@ impl Lexer {
                 },
                 // Finding unknown characters results in an error
                 _ => {
-                    Error {typ: ErrorType::UnknownChar, msg: format!("Unknown character '{}'", c).as_str(), helpers: "".to_string()}.emit_error(&Token {typ: TokenType::Error, value: format!("{}", c), lineno: lineno, col: begin, line: line.to_string()});
+                    let empty_token = Token {typ: TokenType::Error, value: c.to_string(), lineno: lineno, col: begin, line: line.to_string()};
+                    emit_error(format!("Unknown character '{}'", c), "".to_string(), &empty_token, ErrorType::UnknownChar);
                     continue;
                 },
             };

@@ -4,7 +4,7 @@ pub enum SymbolType {
     Var,
     Struct,
     //Const,
-    //Func
+    Func
 }
 
 /// Stores information for each symbol
@@ -99,7 +99,6 @@ impl SymbolController {
     pub fn find_error(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> &Symbol {
         // Loop through the current symbols
         for sym in self.current.symbols.iter() {
-            println!("{:?}", sym);
             // If the symbol matches, return the symbol
             if arg_types == None {
                 if sym.id == id && sym.symtyp == symtyp {
@@ -110,7 +109,6 @@ impl SymbolController {
                     return sym;
                 }
             }
-            println!("-----------------");
         }
 
         // The symbol wasn't found, print an error

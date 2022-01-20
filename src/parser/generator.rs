@@ -4,11 +4,13 @@ use super::ast::Expression;
 /// Returns the Gizmo type converted to an LLVM ir type
 fn type_of(t: String) -> String {
     let struct_type = format!("%.struct.{}", t);
+    let arr_type = format!("{}*", t);
     match t.as_str() {
         "int" => "i32",
         "dec" => "double",
         "bool" => "i1",
         "string" => "i8*",
+        arr if arr.chars().last().unwrap() == ']' => arr_type.as_str(),
         _s => struct_type.as_str()
     }.to_string()
 }
@@ -106,6 +108,22 @@ impl Generator {
                 self.name_num += 1;
                 format!("%{}", self.name_num - 1)
             },
+            Expression::Array {values, typ} => {
+                let value_type = type_of(values[0].validate().to_string());
+                self.code.push_str(format!("\t%{} = alloca [{} x {}]\n", self.name_num, values.len(), value_type).as_str());
+                let save_name_num = self.name_num;
+                self.name_num += 1;
+                let mut value_num = 0;
+                for value in values.iter() {
+                    let expr = self.gen_expr(&Box::new((*value).clone()));
+                    self.code.push_str(format!("\t%{} = getelementptr inbounds [{} x {}], [{1} x {2}]* %{}, i32 0, i32 {}\n", self.name_num, values.len(), value_type, save_name_num, value_num).as_str());
+                    self.name_num += 1;
+                    value_num += 1;
+                }
+                self.code.push_str(format!("\t%{} = load [{} x {}], [{1} x {2}]* %{}\n", self.name_num, values.len(), value_type, save_name_num).as_str());
+                self.name_num += 1;
+                format!("%{}", self.name_num - 1)
+            }
             // When a binary operator is found, generate ir for it
             Expression::BinaryOperator {oper, left, right} => {
                 // Recursively generate ir for the left and right side
