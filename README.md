@@ -16,5 +16,5 @@ cargo install --path .
 ```
 Now you can use the `rustygizmo` command to run gizmo files.  
 ```
-rustygizmo file.gizmo
+gizmoc file.gizmo
 ```
