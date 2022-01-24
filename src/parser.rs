@@ -378,6 +378,10 @@ impl Parser {
                 let sym_arr = self.strip_arr(sym.typ.clone());
                 begin = Expression::IndexedValue {src: Box::new(Expression::Id(id.unwrap(), sym.typ.clone(), sym.gen_id.clone())), index: Box::new(e), new_typ: sym_arr.to_string()};
             }
+<<<<<<< HEAD
+=======
+            begin = Expression::Id(id.unwrap(), id_sym.unwrap().typ.clone(), id_sym.unwrap().gen_id.clone());
+>>>>>>> cf018bafddcc009ee31174cac1b1d298c540b735
         }
 
         // Match a dot
