@@ -84,6 +84,18 @@ impl Lexer {
                 '-' if self.peek() == '=' => {self.advance(); self.advance(); ("-=", TokenType::DashEqual)},
                 '*' if self.peek() == '=' => {self.advance(); self.advance(); ("*=", TokenType::StarEqual)},
                 '/' if self.peek() == '=' => {self.advance(); self.advance(); ("/=", TokenType::SlashEqual)},
+                '/' if self.peek() == '/' => {
+                    self.advance();
+                    self.advance();
+                    while c != '\n' {
+                        if self.pos >= self.code.len() {
+                            break;
+                        }
+                        c = self.peek();
+                        self.advance();
+                    }
+                    continue;
+                },
                 '!' if self.peek() == '=' => {self.advance(); self.advance(); ("!=", TokenType::NotEqual)},
                 '+' if self.peek() == '+' => {self.advance(); self.advance(); ("++", TokenType::PlusPlus)},
                 '-' if self.peek() == '-' => {self.advance(); self.advance(); ("--", TokenType::DashDash)},

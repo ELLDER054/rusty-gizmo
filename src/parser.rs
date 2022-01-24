@@ -317,6 +317,7 @@ impl Parser {
             let mut fields: Vec<Expression> = Vec::new();
 
             // Expect multiple fields followed by commas
+            let mut field_num = 0;
             loop {
                 // Match an expression
                 let expr = self.expression(self.pos);
@@ -326,7 +327,14 @@ impl Parser {
                 }
 
                 // Push the expression to fields
-                fields.push(expr);
+                fields.push(expr.clone());
+
+                // Find the symbol in the symbol table
+                let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Struct, None);
+                if sym.arg_types[field_num].1 != expr.validate() {
+                    emit_error("The type of this expression does not match the corresponding field".to_string(), "".to_string(), &self.tokens[self.pos - 1], ErrorType::MismatchedTypes);
+                }
+                field_num += 1;
 
                 // Match a comma
                 // Not finding a comma tells the compiler to stop parsing fields
@@ -376,12 +384,8 @@ impl Parser {
                 self.match_t(TokenType::RightBracket);
                 let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Var, None);
                 let sym_arr = self.strip_arr(sym.typ.clone());
-                begin = Expression::IndexedValue {src: Box::new(Expression::Id(id.unwrap(), sym.typ.clone(), sym.gen_id.clone())), index: Box::new(e), new_typ: sym_arr.to_string()};
+                begin = Expression::IndexedValue {src: Box::new(Expression::Id(id.clone().unwrap(), sym.typ.clone(), sym.gen_id.clone())), index: Box::new(e), new_typ: sym_arr.to_string()};
             }
-<<<<<<< HEAD
-=======
-            begin = Expression::Id(id.unwrap(), id_sym.unwrap().typ.clone(), id_sym.unwrap().gen_id.clone());
->>>>>>> cf018bafddcc009ee31174cac1b1d298c540b735
         }
 
         // Match a dot
