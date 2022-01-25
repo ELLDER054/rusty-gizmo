@@ -14,7 +14,7 @@ Then, go to the directory and use cargo to build it.
 cd rusty-gizmo
 cargo install --path .
 ```
-Now you can use the `rustygizmo` command to run gizmo files.  
+Now you can use the `gizmoc` command to run gizmo files.  
 ```
 gizmoc file.gizmo
 ```
