@@ -97,10 +97,6 @@ impl Lexer {
                     continue;
                 },
                 '!' if self.peek() == '=' => {self.advance(); self.advance(); ("!=", TokenType::NotEqual)},
-                '+' if self.peek() == '+' => {self.advance(); self.advance(); ("++", TokenType::PlusPlus)},
-                '-' if self.peek() == '-' => {self.advance(); self.advance(); ("--", TokenType::DashDash)},
-                '*' if self.peek() == '*' => {self.advance(); self.advance(); ("**", TokenType::StarStar)},
-                '/' if self.peek() == '/' => {self.advance(); self.advance(); ("//", TokenType::SlashSlash)},
                 '+' => {self.advance(); ("+", TokenType::Plus)},
                 '-' => {self.advance(); ("-", TokenType::Dash)},
                 '*' => {self.advance(); ("*", TokenType::Star)},
@@ -264,26 +260,22 @@ impl Lexer {
 
 #[test]
 fn test_operators() {
-    let mut lexer = Lexer {code: "+ - * / ++ -- ** // += -= *= /= == != < > <= >=".to_string(), col: 0, pos: 0};
+    let mut lexer = Lexer {code: "+ - * / += -= *= /= == != < > <= >=".to_string(), col: 0, pos: 0};
     assert_eq!(lexer.lex(), vec![
         Token {typ: TokenType::Plus, value: "+".to_string(), lineno: 1, col: 0, line: lexer.code.clone()},
         Token {typ: TokenType::Dash, value: "-".to_string(), lineno: 1, col: 2, line: lexer.code.clone()},
         Token {typ: TokenType::Star, value: "*".to_string(), lineno: 1, col: 4, line: lexer.code.clone()},
         Token {typ: TokenType::Slash, value: "/".to_string(), lineno: 1, col: 6, line: lexer.code.clone()},
-        Token {typ: TokenType::PlusPlus, value: "++".to_string(), lineno: 1, col: 8, line: lexer.code.clone()},
-        Token {typ: TokenType::DashDash, value: "--".to_string(), lineno: 1, col: 11, line: lexer.code.clone()},
-        Token {typ: TokenType::StarStar, value: "**".to_string(), lineno: 1, col: 14, line: lexer.code.clone()},
-        Token {typ: TokenType::SlashSlash, value: "//".to_string(), lineno: 1, col: 17, line: lexer.code.clone()},
-        Token {typ: TokenType::PlusEqual, value: "+=".to_string(), lineno: 1, col: 20, line: lexer.code.clone()},
-        Token {typ: TokenType::DashEqual, value: "-=".to_string(), lineno: 1, col: 23, line: lexer.code.clone()},
-        Token {typ: TokenType::StarEqual, value: "*=".to_string(), lineno: 1, col: 26, line: lexer.code.clone()},
-        Token {typ: TokenType::SlashEqual, value: "/=".to_string(), lineno: 1, col: 29, line: lexer.code.clone()},
-        Token {typ: TokenType::EqualEqual, value: "==".to_string(), lineno: 1, col: 32, line: lexer.code.clone()},
-        Token {typ: TokenType::NotEqual, value: "!=".to_string(), lineno: 1, col: 35, line: lexer.code.clone()},
-        Token {typ: TokenType::LessThan, value: "<".to_string(), lineno: 1, col: 38, line: lexer.code.clone()},
-        Token {typ: TokenType::GreaterThan, value: ">".to_string(), lineno: 1, col: 40, line: lexer.code.clone()},
-        Token {typ: TokenType::LessEqual, value: "<=".to_string(), lineno: 1, col: 42, line: lexer.code.clone()},
-        Token {typ: TokenType::GreaterEqual, value: ">=".to_string(), lineno: 1, col: 45, line: lexer.code.clone()},
+        Token {typ: TokenType::PlusEqual, value: "+=".to_string(), lineno: 1, col: 8, line: lexer.code.clone()},
+        Token {typ: TokenType::DashEqual, value: "-=".to_string(), lineno: 1, col: 11, line: lexer.code.clone()},
+        Token {typ: TokenType::StarEqual, value: "*=".to_string(), lineno: 1, col: 14, line: lexer.code.clone()},
+        Token {typ: TokenType::SlashEqual, value: "/=".to_string(), lineno: 1, col: 17, line: lexer.code.clone()},
+        Token {typ: TokenType::EqualEqual, value: "==".to_string(), lineno: 1, col: 20, line: lexer.code.clone()},
+        Token {typ: TokenType::NotEqual, value: "!=".to_string(), lineno: 1, col: 23, line: lexer.code.clone()},
+        Token {typ: TokenType::LessThan, value: "<".to_string(), lineno: 1, col: 26, line: lexer.code.clone()},
+        Token {typ: TokenType::GreaterThan, value: ">".to_string(), lineno: 1, col: 28, line: lexer.code.clone()},
+        Token {typ: TokenType::LessEqual, value: "<=".to_string(), lineno: 1, col: 30, line: lexer.code.clone()},
+        Token {typ: TokenType::GreaterEqual, value: ">=".to_string(), lineno: 1, col: 33, line: lexer.code.clone()},
     ]);
 }
 

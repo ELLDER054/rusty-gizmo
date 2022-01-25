@@ -21,16 +21,12 @@ pub struct Token {
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
     PlusEqual,    // +=
-    PlusPlus,     // ++
     Plus,         // +
     DashEqual,    // -=
-    DashDash,     // --
     Dash,         // -
     StarEqual,    // *=
-    StarStar,     // **
     Star,         // *
     SlashEqual,   // /=
-    SlashSlash,   // //
     Slash,        // /
     NotEqual,     // !=
     SemiColon,    // ;

@@ -533,6 +533,47 @@ impl Parser {
         return Node::FuncCall {id: id.unwrap(), args: args};
     }
 
+    /// Parse an assignment
+    /// # Example
+    /// a = 5;
+    fn assign_statement(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Match an identifier after the 'let' keyword
+        let id = self.match_t(TokenType::Id);
+        if id == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        // Match an equals sign after the
+        let eq = self.match_t(TokenType::Equal);
+        if eq == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        // Look for an expression for the value of the let statement
+        let expr: Expression = self.expression(self.pos);
+        if expr == Expression::Non {
+            emit_error("Expected an expression".to_string(), "help: Take away the equals sign or insert an expression after this equals sign".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+        
+        // If the type of the expression has a type-checker error, print an error
+        if expr.clone().validate() == "error" {
+            emit_error("This type does not match the type of the expression".to_string(), "".to_string(), &self.tokens[self.pos - 1], ErrorType::MismatchedTypes);
+        }
+
+        // Look for an expression for the value of the let statement
+        let semi = self.match_t(TokenType::SemiColon);
+        if semi == None {
+            emit_error("Expected a semi-colon".to_string(), "help: Insert a semi-colon after this expression".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+
+        let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Var, None);
+        return Node::Assign {id: id.unwrap(), expr: expr, gen_id: sym.gen_id.clone()};
+    }
+
     /// Parses a let statement
     /// # Example
     /// let a = 5;
@@ -617,13 +658,22 @@ impl Parser {
 
         // Loop through the tokens
         while self.pos < max_len {
-            let let_stmt = self.let_statement(self.pos);
-
             // Check for a let statement
+            let let_stmt = self.let_statement(self.pos);
             if let_stmt != Node::Non {
                 if let Node::Let {id, expr, gen_id} = let_stmt {
                     // Push the Node onto the nodes list
                     nodes.push(Node::Let {id, expr, gen_id});
+                    continue;
+                }
+            }
+
+            // Check for an assignment statement
+            let assign = self.assign_statement(self.pos);
+            if assign != Node::Non {
+                if let Node::Assign {id, expr, gen_id} = assign {
+                    // Push the Node onto the nodes list
+                    nodes.push(Node::Assign {id, expr, gen_id});
                     continue;
                 }
             }

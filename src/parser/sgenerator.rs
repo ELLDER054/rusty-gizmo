@@ -104,7 +104,7 @@ impl IRBuilder {
     }
 
     fn create_operation(&mut self, oper: String, typ: String, left: String, right: String) -> String {
-        self.code.push_str(format!("\t%{} = {} {} {}, {}\n", self.ssa_num, type_of_oper(oper), typ, left, right).as_str());
+        self.code.push_str(format!("\t%{} = {} {} {}, {}\n", self.ssa_num, type_of_oper(oper), type_of(typ), left, right).as_str());
         self.ssa_num += 1;
         format!("%{}", self.ssa_num - 1)
     }
@@ -129,6 +129,7 @@ impl Generator {
         for node in nodes.iter() {
             match node {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
+                Node::Assign {id: _, expr, gen_id} => self.generate_assign_stmt(expr.clone(), gen_id.clone()),
                 Node::FuncCall {id, args} => self.generate_func_call(id.clone(), args.clone()),
                 Node::Struct {id, fields} => self.generate_struct_def(id.clone(), fields.clone()),
                 _ => {}
@@ -219,7 +220,11 @@ impl Generator {
             Expression::UnaryOperator {oper, child} => {
                 let gen_child = self.generate_expression((*child).clone());
                 if oper == "-".to_string() {
-                    return self.ir_b.create_operation("*".to_string(), child.clone().validate().to_string(), gen_child, "-1".to_string());
+                    return self.ir_b.create_operation("*".to_string(), child.clone().validate().to_string(), gen_child.clone(), "-1".to_string());
+                } else if oper == "++".to_string() {
+                    let oper = self.ir_b.create_operation("+".to_string(), "i32".to_string(), gen_child.clone(), "1".to_string());
+                    self.ir_b.create_store(oper, gen_child.clone(), "i32".to_string());
+                    gen_child
                 } else {
                     return self.ir_b.create_operation("-".to_string(), child.clone().validate().to_string(), gen_child, "1".to_string());
                 }
@@ -232,6 +237,11 @@ impl Generator {
         let gen_expr = self.generate_expression(expr.clone());
         let var = self.ir_b.create_alloca(type_of(expr.clone().validate().to_string()), Some(gen_id));
         self.ir_b.create_store(gen_expr, var, type_of(expr.clone().validate().to_string()));
+    }
+
+    fn generate_assign_stmt(&mut self, expr: Expression, gen_id: String) {
+        let gen_expr = self.generate_expression(expr.clone());
+        self.ir_b.create_store(gen_expr, gen_id, type_of(expr.clone().validate().to_string()));
     }
 
     fn generate_func_call(&mut self, id: String, args: Vec<Box<Expression>>) {

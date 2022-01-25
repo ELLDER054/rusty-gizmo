@@ -11,6 +11,16 @@ pub enum Node {
         gen_id: String,
     },
 
+    /// Assign statement
+    /// let a: int = 5;
+    /// or
+    /// let a = 5;
+    Assign {
+        id: String,
+        expr: Expression,
+        gen_id: String,
+    },
+
     /// Function call
     /// write(5);
     FuncCall {
@@ -188,12 +198,16 @@ impl Expression {
             "-" => match (*child).validate() {
                 "int" => "int",
                 "dec" => "dec",
-                _ => "error",
-            }
+                _ => "error"
+            },
+            "++" | "--" => match (*child).validate() {
+                "int" => "int",
+                _ => "error"
+            },
             "not" => match (*child).validate() {
                 _ => "bool",
             }
-            _ => "error",
+            _ => "error"
         }
     }
 
