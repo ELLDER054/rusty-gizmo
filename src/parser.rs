@@ -185,9 +185,50 @@ impl Parser {
             }
             return oper;
         }
-        return self.primary(start);
+        return self.indexed(start);
     }
 
+    /// Parse an indexed expression
+    /// # Example
+    /// `a.b` or `a[3]`
+    fn indexed(&mut self, start: usize) -> Expression {
+        self.pos = start;
+
+        // Parse the left hand side of the expression
+        let mut expr = self.primary(self.pos);
+
+        // Continue matching an operator with another side of the expression after it
+        while self.match_t(TokenType::Dot) != None || self.match_t(TokenType::LeftBracket) != None {
+            let save = self.pos - 1;
+
+            // If the right isn't found, print an error
+            let left_type = expr.clone();
+            if (&self.tokens[save]).typ == TokenType::Dot {
+                let right = self.match_t(TokenType::Id);
+                if right == None {
+                    emit_error("Expected an expression after this operator".to_string(), "help: Take away the operator or insert an expression after this operator".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+                }
+
+                // TODO: Add error handling here and get 'typ' and 'field_num'
+                
+                expr = Expression::StructDot {id: Box::new(expr.clone()), id2: right.clone().unwrap(), typ: "int[]".to_string(), field_num: 0};
+            } else {
+                let right = self.primary(self.pos);
+                if right == Expression::Non {
+                    emit_error("Expected an expression after this operator".to_string(), "help: Take away the operator or insert an expression after this operator".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+                }
+                self.match_t(TokenType::RightBracket);
+                expr = Expression::IndexedValue {src: Box::new(expr.clone()), index: Box::new(right.clone()), new_typ: self.strip_arr(expr.validate().to_string())};
+            }
+            if expr.validate() == "error" {
+                emit_error("Mismatched types within this expression".to_string(), format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left_type.validate(), ""), &self.tokens[save], ErrorType::MismatchedTypes);
+            }
+        }
+
+        return expr;
+    }
+
+    /// Strips an array type down to the type of it's elements
     fn strip_arr(&self, s: String) -> String {
         match s.as_str() {
             "string" => "char",
@@ -210,13 +251,7 @@ impl Parser {
         }
         let string = self.match_t(TokenType::Str);
         if string != None {
-            if self.match_t(TokenType::LeftBracket) == None {
-                return Expression::Str(self.tokens[self.pos - 1].value.as_str().to_string());
-            } else {
-                let e = self.expression(self.pos);
-                self.match_t(TokenType::RightBracket);
-                return Expression::IndexedValue {src: Box::new(Expression::Str(string.unwrap())), index: Box::new(e), new_typ: "char".to_string()};
-            }
+            return Expression::Str(self.tokens[self.pos - 1].value.as_str().to_string());
         }
         let boolean = self.match_t(TokenType::Bool);
         if boolean != None {
@@ -249,13 +284,7 @@ impl Parser {
                     }
                 }
                 let typ = format!("{}[]", &first_typ);
-                if self.match_t(TokenType::LeftBracket) == None {
-                    return Expression::Array {values: values.clone(), typ: typ};
-                } else {
-                    let e = self.expression(self.pos);
-                    self.match_t(TokenType::RightBracket);
-                    return Expression::IndexedValue {src: Box::new(Expression::Array {values: values.clone(), typ: typ.clone()}), index: Box::new(e), new_typ: self.strip_arr(typ).to_string()};
-                }
+                return Expression::Array {values: values.clone(), typ: typ};
             }
             return Expression::Non;
         }
@@ -263,28 +292,10 @@ impl Parser {
         if ns != Expression::Non {
             return ns;
         }
-        let rec_id = self.rec_identifier(self.pos);
-        if rec_id != Expression::Non {
-            if self.match_t(TokenType::LeftBracket) == None {
-                return rec_id;
-            } else {
-                let e = self.expression(self.pos);
-                self.match_t(TokenType::RightBracket);
-                return Expression::IndexedValue {src: Box::new(rec_id.clone()), index: Box::new(e), new_typ: self.strip_arr(rec_id.validate().to_string())};
-            }
-        }
         let id = self.match_t(TokenType::Id);
         if id != None {
-            if self.match_t(TokenType::LeftBracket) == None {
-                let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, None);
-                return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), sym.gen_id.clone());
-            } else {
-                let e = self.expression(self.pos);
-                self.match_t(TokenType::RightBracket);
-                let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Var, None);
-                let sym_arr = self.strip_arr(sym.typ.clone());
-                return Expression::IndexedValue {src: Box::new(Expression::Id(id.unwrap(), sym.typ.clone(), sym.gen_id.clone())), index: Box::new(e), new_typ: sym_arr.to_string()};
-            }
+            let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, None);
+            return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), sym.gen_id.clone());
         }
 
         // Nothing is found, return Non
@@ -353,64 +364,6 @@ impl Parser {
             // Return the struct initialization
             return Expression::NewStruct {id: id.unwrap(), fields: fields};
         }
-        return Expression::Non;
-    }
-
-    /// Parses an identifier
-    /// # Example
-    /// `a`, `a.b`, `a.b.c`, etc
-    fn rec_identifier(&mut self, start: usize) -> Expression {
-        self.pos = start;
-
-        // Match a struct initialization
-        // This is because it is possible to have something like:
-        // let bar = new Foo(5, 6, 7).bar
-        let mut begin = self.new_struct(self.pos);
-        if begin == Expression::Non {
-            // If we didn't find the struct initialization, we can just match an identifier
-            let id = self.match_t(TokenType::Id);
-            if id == None {
-                self.pos = start;
-                return Expression::Non;
-            }
-            if self.match_t(TokenType::LeftBracket) == None {
-                let mut id_sym = self.symtable.find(id.clone().unwrap(), SymbolType::Var, None);
-                if id_sym == None {
-                    id_sym = Some(self.symtable.find_error(id.clone().unwrap(), SymbolType::Struct, None));
-                }
-                begin = Expression::Id(id.unwrap(), id_sym.unwrap().typ.clone(), id_sym.unwrap().gen_id.clone());
-            } else {
-                let e = self.expression(self.pos);
-                self.match_t(TokenType::RightBracket);
-                let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Var, None);
-                let sym_arr = self.strip_arr(sym.typ.clone());
-                begin = Expression::IndexedValue {src: Box::new(Expression::Id(id.clone().unwrap(), sym.typ.clone(), sym.gen_id.clone())), index: Box::new(e), new_typ: sym_arr.to_string()};
-            }
-        }
-
-        // Match a dot
-        let dot = self.match_t(TokenType::Dot);
-        if dot == None {
-            self.pos = start;
-            return Expression::Non;
-        }
-
-        // Match another identifier
-        let id2 = self.match_t(TokenType::Id);
-        if id2 == None {
-            emit_error("Expected an identifier".to_string(), "help: Insert an identifier after this dot".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
-        }
-
-        // Find the field number of the field
-        let mut field_num = 0;
-        let sym = self.symtable.find_error(begin.clone().validate().to_string(), SymbolType::Struct, None);
-        for field in sym.arg_types.iter() {
-            if field.0 == id2.clone().unwrap() {
-                return Expression::StructDot {id: Box::new(begin), id2: id2.unwrap(), typ: sym.arg_types[field_num as usize].clone().1, field_num: field_num};
-            }
-            field_num += 1;
-        }
-        self.pos = start;
         return Expression::Non;
     }
 
