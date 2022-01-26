@@ -171,7 +171,11 @@ impl Generator {
                 let alloca = self.ir_b.create_alloca(type_of(id.validate().to_string()), None);
                 self.ir_b.create_store(gen_begin, alloca.clone(), type_of(id.validate().to_string()));
                 let gep = self.ir_b.create_gep(type_of(id.validate().to_string()), alloca.clone(), vec!["0".to_string(), field_num.to_string()]);
-                self.ir_b.create_load(type_of(typ.clone()), gep)
+                if load_id == true {
+                    self.ir_b.create_load(type_of(typ.clone()), gep)
+                } else {
+                    gep
+                }
             }
             Expression::Array {values, typ: _} => {
                 if !self.has_array {
