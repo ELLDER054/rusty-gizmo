@@ -167,10 +167,8 @@ impl Generator {
                 self.ir_b.create_load(type_of(id), begin)
             }
             Expression::StructDot {id, id2: _, typ, field_num} => {
-                let gen_begin = self.generate_expression(*id.clone(), true);
-                let alloca = self.ir_b.create_alloca(type_of(id.validate().to_string()), None);
-                self.ir_b.create_store(gen_begin, alloca.clone(), type_of(id.validate().to_string()));
-                let gep = self.ir_b.create_gep(type_of(id.validate().to_string()), alloca.clone(), vec!["0".to_string(), field_num.to_string()]);
+                let gen_begin = self.generate_expression(*id.clone(), false);
+                let gep = self.ir_b.create_gep(type_of(id.validate().to_string()), gen_begin, vec!["0".to_string(), field_num.to_string()]);
                 if load_id == true {
                     self.ir_b.create_load(type_of(typ.clone()), gep)
                 } else {
