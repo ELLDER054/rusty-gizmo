@@ -16,9 +16,8 @@ pub enum Node {
     /// or
     /// let a = 5;
     Assign {
-        id: String,
+        id: Expression,
         expr: Expression,
-        gen_id: String,
     },
 
     /// Function call

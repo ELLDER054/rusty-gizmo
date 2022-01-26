@@ -129,7 +129,7 @@ impl Generator {
         for node in nodes.iter() {
             match node {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
-                Node::Assign {id: _, expr, gen_id} => self.generate_assign_stmt(expr.clone(), gen_id.clone()),
+                Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => self.generate_func_call(id.clone(), args.clone()),
                 Node::Struct {id, fields} => self.generate_struct_def(id.clone(), fields.clone()),
                 _ => {}
@@ -138,7 +138,7 @@ impl Generator {
         self.ir_b.code.push_str(self.ir_b.ends.as_str());
     }
 
-    pub fn generate_expression(&mut self, expr: Expression) -> String {
+    pub fn generate_expression(&mut self, expr: Expression, load_id: bool) -> String {
         match expr.clone() {
             Expression::Int(i) => i.to_string(),
             Expression::Dec(d) => d.to_string(),
@@ -149,13 +149,17 @@ impl Generator {
                 self.ir_b.create_gep(format!("[{} x i8]", s.len() + 1), global, vec!["0".to_string(), "0".to_string()])
             },
             Expression::Id(_id, typ, gen_id) => {
-                self.ir_b.create_load(type_of(typ), gen_id)
+                if load_id == true {
+                    self.ir_b.create_load(type_of(typ), gen_id)
+                } else {
+                    gen_id
+                }
             }
             Expression::NewStruct {id, fields} => {
                 let begin = self.ir_b.create_alloca(type_of(id.clone()), None);
                 let mut field_num = 0;
                 for field in fields.iter() {
-                    let gen_field = self.generate_expression(field.clone());
+                    let gen_field = self.generate_expression(field.clone(), true);
                     let gep = self.ir_b.create_gep(type_of(id.clone()), begin.clone(), vec!["0".to_string(), field_num.to_string()]);
                     self.ir_b.create_store(gen_field, gep, type_of(field.validate().to_string()));
                     field_num += 1;
@@ -163,7 +167,7 @@ impl Generator {
                 self.ir_b.create_load(type_of(id), begin)
             }
             Expression::StructDot {id, id2: _, typ, field_num} => {
-                let gen_begin = self.generate_expression(*id.clone());
+                let gen_begin = self.generate_expression(*id.clone(), true);
                 let alloca = self.ir_b.create_alloca(type_of(id.validate().to_string()), None);
                 self.ir_b.create_store(gen_begin, alloca.clone(), type_of(id.validate().to_string()));
                 let gep = self.ir_b.create_gep(type_of(id.validate().to_string()), alloca.clone(), vec!["0".to_string(), field_num.to_string()]);
@@ -180,7 +184,7 @@ impl Generator {
                 let sized_alloca = self.ir_b.create_alloca(format!("[{} x {}]", values.len(), v_typ), None);
                 let mut value_num = 0;
                 for value in values.iter() {
-                    let gen_value = self.generate_expression((*value).clone());
+                    let gen_value = self.generate_expression((*value).clone(), true);
                     let gep = self.ir_b.create_gep(format!("[{} x {}]", values.len(), v_typ), sized_alloca.clone(), vec!["0".to_string(), value_num.to_string()]);
                     value_num += 1;
                     self.ir_b.create_store(gen_value, gep, type_of(value.clone().validate().to_string()));
@@ -193,8 +197,8 @@ impl Generator {
                 self.ir_b.create_load("%.Arr".to_string(), alloca)
             }
             Expression::IndexedValue {src, index, new_typ} => {
-                let gen_src = self.generate_expression(*src.clone());
-                let gen_index = self.generate_expression(*index.clone());
+                let gen_src = self.generate_expression(*src.clone(), true);
+                let gen_index = self.generate_expression(*index.clone(), true);
                 match src.validate() {
                     "string" => {
                         let bitcast = self.ir_b.create_bitcast("i8*".to_string(), gen_src, "[0 x i8]*".to_string());
@@ -208,17 +212,21 @@ impl Generator {
                         let load = self.ir_b.create_load("i8*".to_string(), gep);
                         let bitcast = self.ir_b.create_bitcast("i8*".to_string(), load, format!("[0 x {}]*", type_of(new_typ.clone())));
                         let gep2 = self.ir_b.create_gep(format!("[0 x {}]", type_of(new_typ.clone())), bitcast, vec!["0".to_string(), gen_index]);
-                        self.ir_b.create_load(type_of(new_typ.clone()), gep2)
+                        if load_id == true {
+                            self.ir_b.create_load(type_of(new_typ.clone()), gep2)
+                        } else {
+                            gep2
+                        }
                     }
                 }
             }
             Expression::BinaryOperator {oper, left, right} => {
-                let gen_left = self.generate_expression((*left).clone());
-                let gen_right = self.generate_expression((*right).clone());
+                let gen_left = self.generate_expression((*left).clone(), true);
+                let gen_right = self.generate_expression((*right).clone(), true);
                 self.ir_b.create_operation(oper, left.clone().validate().to_string(), gen_left, gen_right)
             }
             Expression::UnaryOperator {oper, child} => {
-                let gen_child = self.generate_expression((*child).clone());
+                let gen_child = self.generate_expression((*child).clone(), true);
                 if oper == "-".to_string() {
                     return self.ir_b.create_operation("*".to_string(), child.clone().validate().to_string(), gen_child.clone(), "-1".to_string());
                 } else if oper == "++".to_string() {
@@ -234,13 +242,14 @@ impl Generator {
     }
 
     fn generate_let_stmt(&mut self, expr: Expression, gen_id: String) {
-        let gen_expr = self.generate_expression(expr.clone());
+        let gen_expr = self.generate_expression(expr.clone(), true);
         let var = self.ir_b.create_alloca(type_of(expr.clone().validate().to_string()), Some(gen_id));
         self.ir_b.create_store(gen_expr, var, type_of(expr.clone().validate().to_string()));
     }
 
-    fn generate_assign_stmt(&mut self, expr: Expression, gen_id: String) {
-        let gen_expr = self.generate_expression(expr.clone());
+    fn generate_assign_stmt(&mut self, id: Expression, expr: Expression) {
+        let gen_expr = self.generate_expression(expr.clone(), true);
+        let gen_id = self.generate_expression(id, false);
         self.ir_b.create_store(gen_expr, gen_id, type_of(expr.clone().validate().to_string()));
     }
 
@@ -248,7 +257,7 @@ impl Generator {
         let mut arg_num = 0;
         let mut arg_values = String::new();
         for arg in args.iter() {
-            let gen_arg = self.generate_expression(*arg.clone());
+            let gen_arg = self.generate_expression(*arg.clone(), true);
             arg_values.push_str(format!("{} {}", type_of((*arg.clone().validate()).to_string()), gen_arg).as_str());
             if arg_num + 1 < args.len() {
                 arg_values.push(',');

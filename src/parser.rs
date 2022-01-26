@@ -496,7 +496,9 @@ impl Parser {
         // Match a left parenthesis to follow the identifier
         let lp = self.match_t(TokenType::LeftParen);
         if lp == None {
-            emit_error("Expected a left parenthesis".to_string(), "help: Insert a left parenthesis after this identifier".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+            self.pos = start;
+            return Node::Non;
+            //emit_error("Expected a left parenthesis".to_string(), "help: Insert a left parenthesis after this identifier".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
         }
 
         // Parse a series of arguments followed by commas. If the comma is
@@ -540,8 +542,8 @@ impl Parser {
         self.pos = start;
 
         // Match an identifier after the 'let' keyword
-        let id = self.match_t(TokenType::Id);
-        if id == None {
+        let id = self.indexed(self.pos);
+        if id == Expression::Non {
             self.pos = start;
             return Node::Non;
         }
@@ -549,8 +551,7 @@ impl Parser {
         // Match an equals sign after the
         let eq = self.match_t(TokenType::Equal);
         if eq == None {
-            self.pos = start;
-            return Node::Non;
+            emit_error("Expected an equals sign".to_string(), "help: Insert an equals sign after this identifier".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
         }
 
         // Look for an expression for the value of the let statement
@@ -570,8 +571,7 @@ impl Parser {
             emit_error("Expected a semi-colon".to_string(), "help: Insert a semi-colon after this expression".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
         }
 
-        let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Var, None);
-        return Node::Assign {id: id.unwrap(), expr: expr, gen_id: sym.gen_id.clone()};
+        return Node::Assign {id: id, expr: expr};
     }
 
     /// Parses a let statement
@@ -668,22 +668,22 @@ impl Parser {
                 }
             }
 
-            // Check for an assignment statement
-            let assign = self.assign_statement(self.pos);
-            if assign != Node::Non {
-                if let Node::Assign {id, expr, gen_id} = assign {
-                    // Push the Node onto the nodes list
-                    nodes.push(Node::Assign {id, expr, gen_id});
-                    continue;
-                }
-            }
-
             // Check for a function call
             let func_call = self.func_call(self.pos);
             if func_call != Node::Non {
                 if let Node::FuncCall {id, args} = func_call {
                     // Push the Node onto the nodes list
                     nodes.push(Node::FuncCall {id, args});
+                    continue;
+                }
+            }
+
+            // Check for an assignment statement
+            let assign = self.assign_statement(self.pos);
+            if assign != Node::Non {
+                if let Node::Assign {id, expr} = assign {
+                    // Push the Node onto the nodes list
+                    nodes.push(Node::Assign {id, expr});
                     continue;
                 }
             }
