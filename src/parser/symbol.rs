@@ -59,19 +59,18 @@ impl SymbolController {
         self.current.symbols.push(Symbol {id: id, typ: typ, symtyp: symtyp, gen_id: gen_id, arg_types: arg_types});
     }
 
-    /*
     /// Adds a scope to the symbol table
     pub fn add_scope(&mut self) {
-        self.current.children.push(Scope {parent: Some(Box::new(self.current.clone())), children: Vec::new(), symbols: Vec::new()});
-        self.current = self.current.children.last().unwrap().clone();
+        let new = Scope {parent: Some(Box::new(self.current.clone())), children: Vec::new(), symbols: Vec::new()};
+        self.current.children.push(new.clone());
+        self.current = new.clone();
     }
 
     /// Pops a scope from the symbol table
     pub fn pop_scope(&mut self) {
-        self.current = *self.current.parent.clone().unwrap();
+        self.current = *self.current.parent.as_ref().unwrap().clone();
         self.current.children.pop();
     }
-    */
 
     /// Finds a symbol in the current scope
     /// Returns None if it doesn't exist
@@ -94,25 +93,42 @@ impl SymbolController {
         return None;
     }
 
-    /// Finds a symbol in the current scope
-    /// Prints an error if it doesn't exist
-    pub fn find_error(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> &Symbol {
+    /// Finds a symbol in the global scope
+    /// Returns None if it doesn't exist
+    pub fn find_global(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> Option<Symbol> {
         // Loop through the current symbols
-        for sym in self.current.symbols.iter() {
-            // If the symbol matches, return the symbol
-            if arg_types == None {
-                if sym.id == id && sym.symtyp == symtyp {
-                    return sym;
-                }
-            } else {
-                if sym.id == id && sym.symtyp == symtyp && Some(sym.arg_types.clone()) == arg_types {
-                    return sym;
+        let mut current: Option<Box<Scope>> = Some(Box::new(self.current.clone()));
+        while current != None {
+            let cur = *(current.clone().unwrap());
+            for sym in cur.symbols.iter() {
+                // If the symbol matches, return the symbol
+                if arg_types == None {
+                    if sym.id.clone() == id && sym.symtyp.clone() == symtyp {
+                        return Some(Symbol {id: sym.id.clone(), typ: sym.typ.clone(), gen_id: sym.gen_id.clone(), symtyp: sym.symtyp.clone(), arg_types: sym.arg_types.clone()});
+                    }
+                } else {
+                    if sym.id == id && sym.symtyp == symtyp && Some(sym.arg_types.clone()) == arg_types {
+                        return Some(sym.clone());
+                    }
                 }
             }
+            current = current.clone().unwrap().parent.clone();
         }
 
-        // The symbol wasn't found, print an error
-        eprintln!("Identifier '{}' not found", id);
-        std::process::exit(1);
+        // The symbol wasn't found, return None
+        return None;
+    }
+
+    /// Finds a symbol in the global scope
+    /// Returns None if it doesn't exist
+    pub fn find_global_error(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> Symbol {
+        let sym = self.find_global(id.clone(), symtyp, arg_types);
+        if sym == None {
+            // The symbol wasn't found, print an error
+            eprintln!("Identifier '{}' not found", id);
+            std::process::exit(1);
+        } else {
+            return sym.unwrap();
+        }
     }
 }

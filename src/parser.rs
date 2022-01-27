@@ -210,7 +210,7 @@ impl Parser {
                 }
 
                 // TODO: Add error handling here and get 'typ' and 'field_num'
-                let sym = self.symtable.find_error(expr.clone().validate().to_string(), SymbolType::Struct, None);
+                let sym = self.symtable.find_global_error(expr.clone().validate().to_string(), SymbolType::Struct, None);
                 let mut field_num = 0;
                 for field in sym.arg_types.iter() {
                     if field.0 == right.clone().unwrap() {
@@ -322,7 +322,7 @@ impl Parser {
         }
         let id = self.match_t(TokenType::Id);
         if id != None {
-            let sym = self.symtable.find_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, None);
+            let sym = self.symtable.find_global_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, None);
             return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), sym.gen_id.clone());
         }
 
@@ -368,7 +368,7 @@ impl Parser {
                 fields.push(expr.clone());
 
                 // Find the symbol in the symbol table
-                let sym = self.symtable.find_error(id.clone().unwrap(), SymbolType::Struct, None);
+                let sym = self.symtable.find_global_error(id.clone().unwrap(), SymbolType::Struct, None);
                 
                 if sym.arg_types[field_num].1 != expr.validate() {
                     // If the type of the expected field is not equal to the given field emit an error
@@ -422,7 +422,7 @@ impl Parser {
         // Match an identifier
         // The identifier must also be a struct
         let typ = self.match_t(TokenType::Id);
-        if typ == None || self.symtable.find(typ.clone().unwrap(), SymbolType::Struct, None) == None {
+        if typ == None || self.symtable.find_global(typ.clone().unwrap(), SymbolType::Struct, None) == None {
             // If there was not an identifier or the identifier was not a struct
             // emit an error
             emit_error("Expected a struct type".to_string(), "help: Insert a struct type after this token".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
@@ -568,7 +568,7 @@ impl Parser {
         }
         match id.clone().unwrap().as_str() {
             "write" => {},
-            name => {self.symtable.find_error(name.to_string(), SymbolType::Func, None);}
+            name => {self.symtable.find_global_error(name.to_string(), SymbolType::Func, None);}
         };
         return Node::FuncCall {id: id.unwrap(), args: args};
     }
@@ -610,6 +610,36 @@ impl Parser {
         }
 
         return Node::Assign {id: id, expr: expr};
+    }
+    
+    /// Parses a block
+    /// # Example
+    /// {
+    ///     write(3);
+    /// }
+    fn block_statement(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Match a left brace
+        let lb = self.match_t(TokenType::LeftBrace);
+        if lb == None {
+            self.pos = start;
+            return Node::Non;
+        }
+        self.symtable.add_scope();
+        let mut statements: Vec<Box<Node>> = Vec::new();
+        while (&self.tokens[self.pos]).typ != TokenType::RightBrace {
+            statements.push(Box::new(self.statement(self.pos)));
+        }
+        self.symtable.pop_scope();
+        // Match a right brace
+        let rb = self.match_t(TokenType::RightBrace);
+        if rb == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        return Node::Block {statements: statements};
     }
 
     /// Parses a let statement
@@ -686,54 +716,58 @@ impl Parser {
         return Node::Let {id: id.unwrap(), expr: expr, gen_id: format!("%.{}", self.id_c - 1)};
     }
 
+    /// Parses a statement
+    fn statement(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Check for a let statement
+        let let_stmt = self.let_statement(self.pos);
+        if let_stmt != Node::Non {
+            return let_stmt;
+        }
+
+        // Check for a function call
+        let func_call = self.func_call(self.pos);
+        if func_call != Node::Non {
+            return func_call;
+        }
+
+        // Check for an assignment statement
+        let assign = self.assign_statement(self.pos);
+        if assign != Node::Non {
+            return assign;
+        }
+
+        // Check for a struct definition
+        let struct_def = self.struct_def(self.pos);
+        if struct_def != Node::Non {
+            return struct_def;
+        }
+
+        // Check for a struct definition
+        let block = self.block_statement(self.pos);
+        if block != Node::Non {
+            return block;
+        }
+
+        return Node::Non;
+    }
+
     /// Parses a series of statements based off of the input tokens
     fn program(&mut self, mut max_len: usize) {
         if max_len == 0 {
             max_len = self.tokens.len();
         }
         // Stores each statement's node
-        let mut nodes: Vec<Node> = Vec::new();
+        let mut nodes: Vec<Box<Node>> = Vec::new();
 
         // Loop through the tokens
         while self.pos < max_len {
             // Check for a let statement
-            let let_stmt = self.let_statement(self.pos);
-            if let_stmt != Node::Non {
-                if let Node::Let {id, expr, gen_id} = let_stmt {
-                    // Push the Node onto the nodes list
-                    nodes.push(Node::Let {id, expr, gen_id});
-                    continue;
-                }
-            }
-
-            // Check for a function call
-            let func_call = self.func_call(self.pos);
-            if func_call != Node::Non {
-                if let Node::FuncCall {id, args} = func_call {
-                    // Push the Node onto the nodes list
-                    nodes.push(Node::FuncCall {id, args});
-                    continue;
-                }
-            }
-
-            // Check for an assignment statement
-            let assign = self.assign_statement(self.pos);
-            if assign != Node::Non {
-                if let Node::Assign {id, expr} = assign {
-                    // Push the Node onto the nodes list
-                    nodes.push(Node::Assign {id, expr});
-                    continue;
-                }
-            }
-
-            // Check for a struct definition
-            let struct_def = self.struct_def(self.pos);
-            if struct_def != Node::Non {
-                if let Node::Struct {id, fields} = struct_def {
-                    // Push the Node onto the nodes list
-                    nodes.push(Node::Struct {id: id, fields: fields});
-                    continue;
-                }
+            let stmt = self.statement(self.pos);
+            if stmt != Node::Non {
+                nodes.push(Box::new(stmt));
+                continue;
             }
             emit_error("Unexpected token or EOF".to_string(), "help: Failed to parse this statement".to_string(), &self.tokens[self.pos], ErrorType::ExpectedToken);
             break;
@@ -741,6 +775,7 @@ impl Parser {
        
         let mut gen: Generator = Generator::construct();
         gen.generate(nodes);
+        gen.destruct();
 
         // Open an output file and write to it
         let mut out_file = File::create("a.ll").expect("Couldn't create the output file");

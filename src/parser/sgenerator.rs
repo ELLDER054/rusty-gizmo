@@ -125,17 +125,23 @@ impl Generator {
         Generator {ir_b: IRBuilder::construct(), has_array: false, dec_printf: false, dec_int: false, dec_dec: false, dec_char: false, dec_str: false}
     }
 
-    pub fn generate(&mut self, nodes: Vec<Node>) {
+    pub fn destruct(&mut self) {
+        self.ir_b.code.push_str(self.ir_b.ends.as_str());
+    }
+
+    pub fn generate(&mut self, nodes: Vec<Box<Node>>) {
         for node in nodes.iter() {
-            match node {
+            match *node.clone() {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
                 Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => self.generate_func_call(id.clone(), args.clone()),
                 Node::Struct {id, fields} => self.generate_struct_def(id.clone(), fields.clone()),
+                Node::Block {statements} => {
+                    self.generate(statements);
+                }
                 _ => {}
             }
         }
-        self.ir_b.code.push_str(self.ir_b.ends.as_str());
     }
 
     pub fn generate_expression(&mut self, expr: Expression, load_id: bool) -> String {

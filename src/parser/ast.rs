@@ -1,5 +1,5 @@
 /// An enum to store each possible Node
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Node {
     /// Let statement
     /// let a: int = 5;
@@ -34,6 +34,14 @@ pub enum Node {
     Struct {
         id: String,
         fields: Vec<(String, String)>
+    },
+
+    /// Block
+    /// {
+    ///     // Statements
+    /// }
+    Block {
+        statements: Vec<Box<Node>>
     },
 
     Non,
