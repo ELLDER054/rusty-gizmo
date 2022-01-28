@@ -15,14 +15,14 @@ pub fn emit_error(msg: String, helpers: String, token: &Token, typ: ErrorType) {
 /// Returns the base error message for each error type
 fn msg_for(typ: ErrorType) -> String {
     match typ {
-        ErrorType::UnexpectedEOF => "Unexpected EOF when parsing",
-        ErrorType::UnknownChar => "Unknown character",
-        ErrorType::DecTooManyDots => "Too many dots in floating point number",
-        ErrorType::DecNotFound => "Expected number after dot in floating point number",
+        ErrorType::UnexpectedEOF   => "Unexpected EOF when parsing",
+        ErrorType::UnknownChar     => "Unknown character",
+        ErrorType::DecTooManyDots  => "Too many dots in floating point number",
+        ErrorType::DecNotFound     => "Expected number after dot in floating point number",
 
-        ErrorType::ExpectedToken => "Expected token",
+        ErrorType::ExpectedToken   => "Expected token",
         ErrorType::MismatchedTypes => "Mismatched types",
-        ErrorType::UndefinedArray => "This array has no type"
+        ErrorType::UndefinedArray  => "This array has no type"
     }.to_string()
 }
 

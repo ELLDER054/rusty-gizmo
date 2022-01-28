@@ -1,4 +1,5 @@
 /// An enum to store each possible Node
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Node {
     /// Let statement
@@ -44,6 +45,15 @@ pub enum Node {
         statements: Vec<Box<Node>>
     },
 
+    /// While loop
+    /// while condition {
+    ///     // Statements
+    /// }
+    While {
+        cond: Expression,
+        body: Box<Node>
+    },
+
     Non,
 }
 
@@ -56,6 +66,13 @@ pub enum Expression {
     /// let my_int: int = 10;
     /// ```
     Int(i32),
+
+    /// Character
+    /// # Example
+    /// ```rust
+    /// let my_chr: char = 'a';
+    /// ```
+    Chr(char),
 
     /// Decimal number
     /// # Example
@@ -158,6 +175,7 @@ fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expression>, right: &'b Box<
             "int" => match (*right).validate() {
                 // Once the left side is known, match the right side
                 "int" => "int",
+                "char" => "int",
                 _ => "error",
             },
             "dec" => match (*right).validate() {
@@ -170,16 +188,22 @@ fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expression>, right: &'b Box<
                 _ => "error",
             },
             "char" => match (*right).validate() {
-                "string" => "string",
-                "char" => "string",
-                _ => "error",
+                "int" => "char",
+                "char" => "char",
+                _ => "error"
             },
             _ => "error",
         },
         "-" | "*" => match (*left).validate() {
             "int" => match (*right).validate() {
                 "int" => "int",
+                "char" => "int",
                 _ => "error",
+            },
+            "char" => match(*right).validate() {
+                "int" => "char",
+                "char" => "char",
+                _ => "error"
             },
             "dec" => match (*right).validate() {
                 "dec" => "dec",
@@ -231,16 +255,17 @@ impl Expression {
         match self {
             // Match each kind of expression node to find it's type
             Expression::Int(_i) => "int",
+            Expression::Chr(_c) => "char",
             Expression::Dec(_d) => "dec",
             Expression::Bool(_b) => "bool",
             Expression::Str(_s) => "string",
             Expression::Id(_i, t, _gen_id) => t,
-            Expression::Array {values: _, typ} => typ.as_str(),
-            Expression::IndexedValue {src: _, index: _, new_typ} => new_typ.as_str(),
+            Expression::Array {typ, ..} => typ.as_str(),
+            Expression::IndexedValue {new_typ, ..} => new_typ.as_str(),
             Expression::BinaryOperator {oper, left, right} => binary_rules(oper, left, right),
             Expression::UnaryOperator {oper, child} => unary_rules(oper, child),
-            Expression::NewStruct {id, fields: _} => id,
-            Expression::StructDot {id: _, id2: _, typ, field_num: _} => typ,
+            Expression::NewStruct {id, ..} => id,
+            Expression::StructDot {typ, ..} => typ,
             Expression::Non => "",
         }
     }

@@ -1,8 +1,6 @@
 use super::ast::Node;
 use super::ast::Expression;
 
-
-
 fn type_of(typ: String) -> String {
     let struct_type = format!("%{}", typ);
     match typ.as_str() {
@@ -24,10 +22,10 @@ fn type_of_oper(oper: String) -> String {
         "/" => "sdiv",
         "==" => "icmp eq",
         "!=" => "icmp ne",
-        "<" => "icmp lt",
-        ">" => "icmp gt",
-        "<=" => "icmp le",
-        ">=" => "icmp ge",
+        "<" => "icmp slt",
+        ">" => "icmp sgt",
+        "<=" => "icmp sle",
+        ">=" => "icmp sge",
         _ => ""
     }.to_string()
 }
@@ -38,11 +36,12 @@ pub struct IRBuilder {
     pub ssa_num: i32,
     pub tmp_num: i32,
     pub str_num: i32,
+    pub label_num: i32,
 }
 
 impl IRBuilder {
     fn construct() -> IRBuilder {
-        IRBuilder {code: "define i32 @main() {\nentry:\n".to_string(), ends: "\tret i32 0\n}\n".to_string(), ssa_num: 0, tmp_num: 0, str_num: 0}
+        IRBuilder {code: "define i32 @main() {\nentry:\n".to_string(), ends: "\tret i32 0\n}\n".to_string(), ssa_num: 0, tmp_num: 0, str_num: 0, label_num: 0}
     }
 
     fn create_alloca(&mut self, typ: String, name: Option<String>) -> String {
@@ -133,6 +132,7 @@ impl Generator {
         for node in nodes.iter() {
             match *node.clone() {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
+                Node::While {cond, body} => self.generate_while_loop(cond.clone(), body.clone()),
                 Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => self.generate_func_call(id.clone(), args.clone()),
                 Node::Struct {id, fields} => self.generate_struct_def(id.clone(), fields.clone()),
@@ -144,15 +144,30 @@ impl Generator {
         }
     }
 
+    fn get_str_length(&self, s: String) -> (i32, String) {
+        let mut found = String::new();
+        let mut pos = 0;
+        for c in s.chars() {
+            if c == '.' {
+                return (found.parse::<i32>().unwrap_or(0) + 1, s[pos + 1..s.len()].to_string());
+            }
+            pos += 1;
+            found.push(c);
+        }
+        return (0, String::new());
+    }
+
     pub fn generate_expression(&mut self, expr: Expression, load_id: bool) -> String {
         match expr.clone() {
             Expression::Int(i) => i.to_string(),
+            Expression::Chr(c) => (c as i32).to_string(),
             Expression::Dec(d) => d.to_string(),
             Expression::Bool(b) => b.to_string(),
             Expression::Str(s) => {
-                let global = self.ir_b.create_global(format!("@.str.{}", self.ir_b.str_num), format!("[{} x i8] c\"{}\\00\"", s.len() + 1, s));
+                let (length, rest) = self.get_str_length(s.clone());
+                let global = self.ir_b.create_global(format!("@.str.{}", self.ir_b.str_num), format!("[{} x i8] c\"{}\\00\"", length, rest));
                 self.ir_b.str_num += 1;
-                self.ir_b.create_gep(format!("[{} x i8]", s.len() + 1), global, vec!["0".to_string(), "0".to_string()])
+                self.ir_b.create_gep(format!("[{} x i8]", length), global, vec!["0".to_string(), "0".to_string()])
             },
             Expression::Id(_id, typ, gen_id) => {
                 if load_id == true {
@@ -172,7 +187,7 @@ impl Generator {
                 }
                 self.ir_b.create_load(type_of(id), begin)
             }
-            Expression::StructDot {id, id2: _, typ, field_num} => {
+            Expression::StructDot {id, typ, field_num, ..} => {
                 let gen_begin = self.generate_expression(*id.clone(), false);
                 let gep = self.ir_b.create_gep(type_of(id.validate().to_string()), gen_begin, vec!["0".to_string(), field_num.to_string()]);
                 if load_id == true {
@@ -181,7 +196,7 @@ impl Generator {
                     gep
                 }
             }
-            Expression::Array {values, typ: _} => {
+            Expression::Array {values, ..} => {
                 if !self.has_array {
                     self.ir_b.create_new_struct(".Arr".to_string(), vec![("".to_string(), "string".to_string()), ("".to_string(), "int".to_string())]);
                     self.has_array = true;
@@ -253,6 +268,15 @@ impl Generator {
         let gen_expr = self.generate_expression(expr.clone(), true);
         let var = self.ir_b.create_alloca(type_of(expr.clone().validate().to_string()), Some(gen_id));
         self.ir_b.create_store(gen_expr, var, type_of(expr.clone().validate().to_string()));
+    }
+
+    fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>) {
+        let gen_cond = self.generate_expression(cond.clone(), true);
+        self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond, self.ir_b.label_num, self.ir_b.label_num + 1, self.ir_b.label_num).as_str());
+        self.generate(vec![body]);
+        let gen_cond2 = self.generate_expression(cond.clone(), true);
+        self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond2, self.ir_b.label_num, self.ir_b.label_num + 1, self.ir_b.label_num + 1).as_str());
+        self.ir_b.label_num += 2;
     }
 
     fn generate_assign_stmt(&mut self, id: Expression, expr: Expression) {

@@ -253,19 +253,23 @@ impl Parser {
         // Match an expression constant
         let int = self.match_t(TokenType::Int);
         if int != None {
-            return Expression::Int(self.tokens[self.pos - 1].value.parse().unwrap());
+            return Expression::Int(int.unwrap().parse().unwrap());
+        }
+        let chr = self.match_t(TokenType::Char);
+        if chr != None {
+            return Expression::Chr(chr.unwrap().chars().collect::<Vec<char>>()[0]);
         }
         let dec = self.match_t(TokenType::Dec);
         if dec != None {
-            return Expression::Dec(self.tokens[self.pos - 1].value.parse().unwrap());
+            return Expression::Dec(dec.unwrap().parse().unwrap());
         }
         let string = self.match_t(TokenType::Str);
         if string != None {
-            return Expression::Str(self.tokens[self.pos - 1].value.as_str().to_string());
+            return Expression::Str(string.unwrap().as_str().to_string());
         }
         let boolean = self.match_t(TokenType::Bool);
         if boolean != None {
-            return Expression::Bool(if self.tokens[self.pos - 1].value == "true" {true} else {false});
+            return Expression::Bool(if boolean.unwrap().as_str() == "true" {true} else {false});
         }
         let lb = self.match_t(TokenType::LeftBracket);
         if lb != None {
@@ -324,6 +328,18 @@ impl Parser {
         if id != None {
             let sym = self.symtable.find_global_error((&self.tokens[self.pos - 1].value).to_string(), SymbolType::Var, None);
             return Expression::Id((&self.tokens[self.pos - 1].value).to_string(), sym.typ.clone(), sym.gen_id.clone());
+        }
+        let lp = self.match_t(TokenType::LeftParen);
+        if lp != None {
+            let e = self.expression(self.pos);
+            if e == Expression::Non {
+                emit_error("Expected an expression".to_string(), "Expected an expression after this left parenthesis".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+            }
+            let rp = self.match_t(TokenType::RightParen);
+            if rp == None {
+                emit_error("Expected a right parenthesis".to_string(), "Expected a right parenthesis after this expression".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+            }
+            return e;
         }
 
         // Nothing is found, return Non
@@ -642,6 +658,30 @@ impl Parser {
         return Node::Block {statements: statements};
     }
 
+    /// Parses a while-loop
+    /// # Example
+    /// let i = 0;
+    /// while i < 10 {
+    ///     write(i);
+    ///     i = i + 1;
+    /// }
+    fn while_loop(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        let key = self.match_t(TokenType::While);
+        if key == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        let cond = self.expression(self.pos);
+        if cond == Expression::Non {
+            emit_error("Expected a conditional expression".to_string(), "help: Insert an conditional expression after this 'while' keyword".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+        let body = self.statement(self.pos);
+        return Node::While {cond: cond, body: Box::new(body)};
+    }
+
     /// Parses a let statement
     /// # Example
     /// let a = 5;
@@ -724,6 +764,12 @@ impl Parser {
         let let_stmt = self.let_statement(self.pos);
         if let_stmt != Node::Non {
             return let_stmt;
+        }
+
+        // Check for a while-loop
+        let wh = self.while_loop(self.pos);
+        if wh != Node::Non {
+            return wh;
         }
 
         // Check for a function call

@@ -46,6 +46,7 @@ pub enum TokenType {
     Comma,        // ,
     Dot,          // .
     Let,
+    While,
     New,
     Struct,
     Id,
@@ -53,6 +54,7 @@ pub enum TokenType {
     Dec,
     Bool,
     Str,
+    Char,
     Type,
     And,
     Or,

@@ -41,12 +41,29 @@ impl Lexer {
     }
 
     /// Returns the next character in code
-    fn peek(&self) -> char {
+    fn peek(&self, sight: usize) -> char {
         // If the next character is past the end of the input, return ' '
-        if self.pos + 1 >= self.code.len() {
+        if self.pos + sight >= self.code.len() {
             return ' ';
         }
-        return self.code.chars().nth(self.pos + 1).unwrap();
+        return self.code.chars().nth(self.pos + sight).unwrap();
+    }
+
+    /// Parses a character
+    /// # Example
+    /// `a` or `\n`
+    fn parse_character(&mut self) -> String {
+        if self.peek(0) == '\\' {
+            self.advance();
+            return match self.peek(0) {
+                'n'  => "\\0A",
+                't'  => "\\09",
+                '\'' => "\\27",
+                '\"' => "\\22",
+                 _   => "\\"
+            }.to_string();
+        }
+        return self.peek(0).to_string();
     }
 
     /// Loops through the input and collects the tokens
@@ -71,8 +88,10 @@ impl Lexer {
 
             // Allocates a possible string/name/digit for later
             let mut string: String = String::new();
-            let mut name: String = String::new();
-            let mut digit: String = String::new();
+            let mut name:   String = String::new();
+            let mut digit:  String = String::new();
+
+            let mut _chr:   String = String::new();
 
             // Save off the column before collecting a token
             let begin = self.col;
@@ -80,23 +99,27 @@ impl Lexer {
             // Match the character and get the token's type and value
             let (value, typ): (&str, TokenType) = match c {
                 // TODO: Make "advance()" take a parameter that tells how many to advance
-                '+' if self.peek() == '=' => {self.advance(); self.advance(); ("+=", TokenType::PlusEqual)},
-                '-' if self.peek() == '=' => {self.advance(); self.advance(); ("-=", TokenType::DashEqual)},
-                '*' if self.peek() == '=' => {self.advance(); self.advance(); ("*=", TokenType::StarEqual)},
-                '/' if self.peek() == '=' => {self.advance(); self.advance(); ("/=", TokenType::SlashEqual)},
-                '/' if self.peek() == '/' => {
+                '+' if self.peek(1) == '=' => {self.advance(); self.advance(); ("+=", TokenType::PlusEqual)},
+                '-' if self.peek(1) == '=' => {self.advance(); self.advance(); ("-=", TokenType::DashEqual)},
+                '*' if self.peek(1) == '=' => {self.advance(); self.advance(); ("*=", TokenType::StarEqual)},
+                '/' if self.peek(1) == '=' => {self.advance(); self.advance(); ("/=", TokenType::SlashEqual)},
+                '/' if self.peek(1) == '/' => {
+                    // Skip over the '//'
                     self.advance();
                     self.advance();
+
+                    // Contine advancing until a newline is found or the end
+                    // of the input is reached
                     while c != '\n' {
                         if self.pos >= self.code.len() {
                             break;
                         }
-                        c = self.peek();
+                        c = self.peek(1);
                         self.advance();
                     }
                     continue;
                 },
-                '!' if self.peek() == '=' => {self.advance(); self.advance(); ("!=", TokenType::NotEqual)},
+                '!' if self.peek(1) == '=' => {self.advance(); self.advance(); ("!=", TokenType::NotEqual)},
                 '+' => {self.advance(); ("+", TokenType::Plus)},
                 '-' => {self.advance(); ("-", TokenType::Dash)},
                 '*' => {self.advance(); ("*", TokenType::Star)},
@@ -107,12 +130,12 @@ impl Lexer {
                 '}' => {self.advance(); ("}", TokenType::RightBrace)},
                 '[' => {self.advance(); ("[", TokenType::LeftBracket)},
                 ']' => {self.advance(); ("]", TokenType::RightBracket)},
-                '=' if self.peek() == '=' => {self.advance(); self.advance(); ("==", TokenType::EqualEqual)},
+                '=' if self.peek(1) == '=' => {self.advance(); self.advance(); ("==", TokenType::EqualEqual)},
                 '=' => {self.advance(); ("=", TokenType::Equal)},
                 ';' => {self.advance(); (";", TokenType::SemiColon)},
-                '>' if self.peek() == '=' => {self.advance(); self.advance(); (">=", TokenType::GreaterEqual)},
+                '>' if self.peek(1) == '=' => {self.advance(); self.advance(); (">=", TokenType::GreaterEqual)},
                 '>' => {self.advance(); (">", TokenType::GreaterThan)},
-                '<' if self.peek() == '=' => {self.advance(); self.advance(); ("<=", TokenType::LessEqual)},
+                '<' if self.peek(1) == '=' => {self.advance(); self.advance(); ("<=", TokenType::LessEqual)},
                 '<' => {self.advance(); ("<", TokenType::LessThan)},
                 ':' => {self.advance(); (":", TokenType::Colon)},
                 ',' => {self.advance(); (",", TokenType::Comma)},
@@ -128,34 +151,50 @@ impl Lexer {
                     self.advance();
                     self.col = 0;
                     continue;
-                }
+                },
+                '\'' => {
+                    self.advance();
+                    _chr = self.parse_character();
+                    self.advance();
+                    if self.peek(0) != '\'' {
+                        let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
+                        emit_error("Expected a single quote".to_string(), "help: Insert a single quote after this character".to_string(), &empty_token, ErrorType::ExpectedToken);
+                    }
+                    self.advance();
+                    (&_chr, TokenType::Char)
+                },
                 '"' => {
                     // Set c to the character after the '"'
-                    c = self.peek();
+                    c = self.peek(1);
 
                     // Advance and consume the '"'
                     self.advance();
+
+                    let mut len = 0;
 
                     // Loop until the end of the string
                     while c != '"' {
                         // When it reaches the end of the line without finding
                         // a second '"', give error
                         if c == '\n' || c == '\0' {
-                            let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
+                            let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
                             emit_error("Closing double quote was not found".to_string(), "help: Add a closing double quote to signal the end of the string".to_string(), &empty_token, ErrorType::UnexpectedEOF);
                         }
                         // Add the character to allocated "string" variable
-                        string.push(c);
+                        string.push_str(self.parse_character().as_str());
 
                         // Change character to the next character
-                        c = self.peek();
+                        c = self.peek(1);
 
                         // Advance our position and column
                         self.advance();
+                        len += 1;
                     }
 
                     // Advance and consume the second '"'
                     self.advance();
+
+                    string = format!("{}.{}", len, string);
 
                     // Return the new string token
                     (string.as_str(), TokenType::Str)
@@ -167,7 +206,7 @@ impl Lexer {
                         name.push(c);
 
                         // Change character to the next character
-                        c = self.peek();
+                        c = self.peek(1);
 
                         // Advance the position and column
                         self.advance();
@@ -175,15 +214,16 @@ impl Lexer {
 
                     // Match the identifier against all the keywords to find the appropriate token type
                     let id_type: TokenType = match name.as_str() {
-                        "let" => TokenType::Let,
-                        "new" => TokenType::New,
+                        "let"    => TokenType::Let,
+                        "while"  => TokenType::While,
+                        "new"    => TokenType::New,
                         "struct" => TokenType::Struct,
-                        "not" => TokenType::Not,
-                        "and" => TokenType::And,
-                        "or" => TokenType::Or,
+                        "not"    => TokenType::Not,
+                        "and"    => TokenType::And,
+                        "or"     => TokenType::Or,
                         "true" | "false" => TokenType::Bool,
                         "int" | "string" | "char" | "bool" | "dec" => TokenType::Type,
-                        _ => TokenType::Id,
+                        _        => TokenType::Id,
                     };
 
                     // Return the identifier token
@@ -200,7 +240,7 @@ impl Lexer {
                         digit.push(c);
                         
                         // Change character to the next character
-                        c = self.peek();
+                        c = self.peek(1);
                         
                         // Advance the postion and column
                         self.advance();
@@ -210,7 +250,7 @@ impl Lexer {
                     // floating point number
                     if c == '.' {
                         // Skip over the dot
-                        c = self.peek();
+                        c = self.peek(1);
                         self.advance();
                         digit.push('.');
 
@@ -224,7 +264,7 @@ impl Lexer {
                         // number
                         while self.is_digit(c) {
                             digit.push(c);
-                            c = self.peek();
+                            c = self.peek(1);
                             self.advance();
                         }
 
