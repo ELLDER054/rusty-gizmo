@@ -1,18 +1,14 @@
 pub mod lexer;
 mod ast;
-mod sgenerator;
+pub mod generator;
 pub mod symbol;
 
-use std::fs::File;
-use std::io::Write;
-use std::process::Command;
 use self::lexer::token::Token;
 use self::lexer::token::TokenType;
 use self::lexer::error::ErrorType;
 use self::lexer::error::emit_error;
 use self::ast::Node;
 use self::ast::Expression;
-use self::sgenerator::Generator;
 use self::symbol::SymbolController;
 use self::symbol::SymbolType;
 
@@ -800,7 +796,7 @@ impl Parser {
     }
 
     /// Parses a series of statements based off of the input tokens
-    fn program(&mut self, mut max_len: usize) {
+    fn program(&mut self, mut max_len: usize) -> Vec<Box<Node>> {
         if max_len == 0 {
             max_len = self.tokens.len();
         }
@@ -818,20 +814,12 @@ impl Parser {
             emit_error("Unexpected token or EOF".to_string(), "help: Failed to parse this statement".to_string(), &self.tokens[self.pos], ErrorType::ExpectedToken);
             break;
         }
-       
-        let mut gen: Generator = Generator::construct();
-        gen.generate(nodes);
-        gen.destruct();
-
-        // Open an output file and write to it
-        let mut out_file = File::create("a.ll").expect("Couldn't create the output file");
-        out_file.write_all(gen.ir_b.code.as_bytes()).expect("Couldn't write to the output file");
-        Command::new("lli a.ll");
+        nodes
     }
 
     /// Resets the position and calls "program()"
-    pub fn parse(&mut self) {
+    pub fn parse(&mut self) -> Vec<Box<Node>> {
         self.pos = 0;
-        self.program(0);
+        self.program(0)
     }
 }

@@ -274,6 +274,7 @@ impl Expression {
 #[test]
 fn test_validate() {
     assert_eq!(Expression::Int(5).validate(), "int");
+    assert_eq!(Expression::Chr('a').validate(), "char");
     assert_eq!(Expression::Dec("16.788".to_string()).validate(), "dec");
     assert_eq!(Expression::Bool(true).validate(), "bool");
     assert_eq!(Expression::Str("Hello, World!".to_string()).validate(), "string");

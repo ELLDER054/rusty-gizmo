@@ -20,13 +20,9 @@ pub struct Token {
 /// An enum with all the tokens for the language
 #[derive(Debug, PartialEq, Eq)]
 pub enum TokenType {
-    PlusEqual,    // +=
     Plus,         // +
-    DashEqual,    // -=
     Dash,         // -
-    StarEqual,    // *=
     Star,         // *
-    SlashEqual,   // /=
     Slash,        // /
     NotEqual,     // !=
     SemiColon,    // ;

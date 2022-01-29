@@ -99,10 +99,6 @@ impl Lexer {
             // Match the character and get the token's type and value
             let (value, typ): (&str, TokenType) = match c {
                 // TODO: Make "advance()" take a parameter that tells how many to advance
-                '+' if self.peek(1) == '=' => {self.advance(); self.advance(); ("+=", TokenType::PlusEqual)},
-                '-' if self.peek(1) == '=' => {self.advance(); self.advance(); ("-=", TokenType::DashEqual)},
-                '*' if self.peek(1) == '=' => {self.advance(); self.advance(); ("*=", TokenType::StarEqual)},
-                '/' if self.peek(1) == '=' => {self.advance(); self.advance(); ("/=", TokenType::SlashEqual)},
                 '/' if self.peek(1) == '/' => {
                     // Skip over the '//'
                     self.advance();
@@ -300,28 +296,24 @@ impl Lexer {
 
 #[test]
 fn test_operators() {
-    let mut lexer = Lexer {code: "+ - * / += -= *= /= == != < > <= >=".to_string(), col: 0, pos: 0};
+    let mut lexer = Lexer {code: "+ - * / == != < > <= >=".to_string(), col: 0, pos: 0};
     assert_eq!(lexer.lex(), vec![
         Token {typ: TokenType::Plus, value: "+".to_string(), lineno: 1, col: 0, line: lexer.code.clone()},
         Token {typ: TokenType::Dash, value: "-".to_string(), lineno: 1, col: 2, line: lexer.code.clone()},
         Token {typ: TokenType::Star, value: "*".to_string(), lineno: 1, col: 4, line: lexer.code.clone()},
         Token {typ: TokenType::Slash, value: "/".to_string(), lineno: 1, col: 6, line: lexer.code.clone()},
-        Token {typ: TokenType::PlusEqual, value: "+=".to_string(), lineno: 1, col: 8, line: lexer.code.clone()},
-        Token {typ: TokenType::DashEqual, value: "-=".to_string(), lineno: 1, col: 11, line: lexer.code.clone()},
-        Token {typ: TokenType::StarEqual, value: "*=".to_string(), lineno: 1, col: 14, line: lexer.code.clone()},
-        Token {typ: TokenType::SlashEqual, value: "/=".to_string(), lineno: 1, col: 17, line: lexer.code.clone()},
-        Token {typ: TokenType::EqualEqual, value: "==".to_string(), lineno: 1, col: 20, line: lexer.code.clone()},
-        Token {typ: TokenType::NotEqual, value: "!=".to_string(), lineno: 1, col: 23, line: lexer.code.clone()},
-        Token {typ: TokenType::LessThan, value: "<".to_string(), lineno: 1, col: 26, line: lexer.code.clone()},
-        Token {typ: TokenType::GreaterThan, value: ">".to_string(), lineno: 1, col: 28, line: lexer.code.clone()},
-        Token {typ: TokenType::LessEqual, value: "<=".to_string(), lineno: 1, col: 30, line: lexer.code.clone()},
-        Token {typ: TokenType::GreaterEqual, value: ">=".to_string(), lineno: 1, col: 33, line: lexer.code.clone()},
+        Token {typ: TokenType::EqualEqual, value: "==".to_string(), lineno: 1, col: 8, line: lexer.code.clone()},
+        Token {typ: TokenType::NotEqual, value: "!=".to_string(), lineno: 1, col: 11, line: lexer.code.clone()},
+        Token {typ: TokenType::LessThan, value: "<".to_string(), lineno: 1, col: 14, line: lexer.code.clone()},
+        Token {typ: TokenType::GreaterThan, value: ">".to_string(), lineno: 1, col: 16, line: lexer.code.clone()},
+        Token {typ: TokenType::LessEqual, value: "<=".to_string(), lineno: 1, col: 18, line: lexer.code.clone()},
+        Token {typ: TokenType::GreaterEqual, value: ">=".to_string(), lineno: 1, col: 21, line: lexer.code.clone()},
     ]);
 }
 
 #[test]
 fn test_identifiers_keywords_types() {
-    let mut lexer = Lexer {code: "abc int dec bool string let struct new and or not".to_string(), col: 0, pos: 0};
+    let mut lexer = Lexer {code: "abc int dec bool string let while struct new and or not".to_string(), col: 0, pos: 0};
     assert_eq!(lexer.lex(), vec![
 		Token {typ: TokenType::Id, value: "abc".to_string(), lineno: 1, col: 0, line: lexer.code.clone()},
 		Token {typ: TokenType::Type, value: "int".to_string(), lineno: 1, col: 4, line: lexer.code.clone()},
@@ -329,22 +321,24 @@ fn test_identifiers_keywords_types() {
 		Token {typ: TokenType::Type, value: "bool".to_string(), lineno: 1, col: 12, line: lexer.code.clone()},
 		Token {typ: TokenType::Type, value: "string".to_string(), lineno: 1, col: 17, line: lexer.code.clone()},
 		Token {typ: TokenType::Let, value: "let".to_string(), lineno: 1, col: 24, line: lexer.code.clone()},
-		Token {typ: TokenType::Struct, value: "struct".to_string(), lineno: 1, col: 28, line: lexer.code.clone()},
-		Token {typ: TokenType::New, value: "new".to_string(), lineno: 1, col: 35, line: lexer.code.clone()},
-		Token {typ: TokenType::And, value: "and".to_string(), lineno: 1, col: 39, line: lexer.code.clone()},
-		Token {typ: TokenType::Or, value: "or".to_string(), lineno: 1, col: 43, line: lexer.code.clone()},
-		Token {typ: TokenType::Not, value: "not".to_string(), lineno: 1, col: 46, line: lexer.code.clone()}
+		Token {typ: TokenType::While, value: "while".to_string(), lineno: 1, col: 28, line: lexer.code.clone()},
+		Token {typ: TokenType::Struct, value: "struct".to_string(), lineno: 1, col: 34, line: lexer.code.clone()},
+		Token {typ: TokenType::New, value: "new".to_string(), lineno: 1, col: 41, line: lexer.code.clone()},
+		Token {typ: TokenType::And, value: "and".to_string(), lineno: 1, col: 45, line: lexer.code.clone()},
+		Token {typ: TokenType::Or, value: "or".to_string(), lineno: 1, col: 49, line: lexer.code.clone()},
+		Token {typ: TokenType::Not, value: "not".to_string(), lineno: 1, col: 52, line: lexer.code.clone()}
     ]);
 }
 
 #[test]
 fn test_const_values() {
-    let mut lexer = Lexer {code: "5 5.5 true false \"abc\"".to_string(), col: 0, pos: 0};
+    let mut lexer = Lexer {code: "5 'a' 5.5 true false \"abc\"".to_string(), col: 0, pos: 0};
     assert_eq!(lexer.lex(), vec![
 		Token {typ: TokenType::Int, value: "5".to_string(), lineno: 1, col: 0, line: lexer.code.clone()},
-		Token {typ: TokenType::Dec, value: "5.5".to_string(), lineno: 1, col: 2, line: lexer.code.clone()},
-		Token {typ: TokenType::Bool, value: "true".to_string(), lineno: 1, col: 6, line: lexer.code.clone()},
-		Token {typ: TokenType::Bool, value: "false".to_string(), lineno: 1, col: 11, line: lexer.code.clone()},
-		Token {typ: TokenType::Str, value: "abc".to_string(), lineno: 1, col: 17, line: lexer.code.clone()},
+		Token {typ: TokenType::Char, value: "a".to_string(), lineno: 1, col: 2, line: lexer.code.clone()},
+		Token {typ: TokenType::Dec, value: "5.5".to_string(), lineno: 1, col: 6, line: lexer.code.clone()},
+		Token {typ: TokenType::Bool, value: "true".to_string(), lineno: 1, col: 10, line: lexer.code.clone()},
+		Token {typ: TokenType::Bool, value: "false".to_string(), lineno: 1, col: 15, line: lexer.code.clone()},
+		Token {typ: TokenType::Str, value: "3.abc".to_string(), lineno: 1, col: 21, line: lexer.code.clone()},
     ]);
 }
