@@ -2,7 +2,7 @@
 The Gizmo language written in rust.
 
 ## Documentation
-Check out the [main website](http://gizmolang.org/) or the [wiki](https://github.com/ELLDER054/rusty-gizmo/wiki).
+Check out the [main website](http://gizmolang.org/).
 
 ## Building
 To clone the project from github, use:  
