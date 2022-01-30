@@ -148,6 +148,14 @@ pub enum Expression {
         field_num: i32
     },
 
+    /// Function call
+    /// write(5);
+    FuncCall {
+        id: String,
+        typ: String,
+        args: Vec<Box<Expression>>
+    },
+
     Non,
 }
 
@@ -266,6 +274,7 @@ impl Expression {
             Expression::UnaryOperator {oper, child} => unary_rules(oper, child),
             Expression::NewStruct {id, ..} => id,
             Expression::StructDot {typ, ..} => typ,
+            Expression::FuncCall {typ, ..} => typ.as_str(),
             Expression::Non => "",
         }
     }

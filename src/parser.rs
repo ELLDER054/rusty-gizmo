@@ -205,12 +205,11 @@ impl Parser {
                     emit_error("Expected an expression after this operator".to_string(), "help: Take away the operator or insert an expression after this operator".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
                 }
 
-                // TODO: Add error handling here and get 'typ' and 'field_num'
                 let sym = self.symtable.find_global_error(expr.clone().validate().to_string(), SymbolType::Struct, None);
                 let mut field_num = 0;
                 for field in sym.arg_types.iter() {
-                    if field.0 == right.clone().unwrap() {
-                        expr = Expression::StructDot {id: Box::new(expr.clone()), id2: right.clone().unwrap(), typ: field.1.clone(), field_num: field_num};
+                    if field.clone() == right.clone().unwrap() {
+                        expr = Expression::StructDot {id: Box::new(expr.clone()), id2: right.clone().unwrap(), typ: field.clone(), field_num: field_num};
                         break;
                     }
                     field_num += 1;
@@ -266,6 +265,24 @@ impl Parser {
         let boolean = self.match_t(TokenType::Bool);
         if boolean != None {
             return Expression::Bool(if boolean.unwrap().as_str() == "true" {true} else {false});
+        }
+        let fc = self.func_call_no_semi(self.pos);
+        if fc != Node::Non {
+            if let Node::FuncCall {id, args} = fc {
+                let mut check_args: Vec<String> = Vec::new();
+                for arg in args.iter() {
+                    check_args.push(arg.validate().to_string());
+                }
+                match id.clone().as_str() {
+                    "write" => {
+                        return Expression::FuncCall {id: id, args: args, typ: "Non".to_string()}
+                    },
+                    _ => {
+                        let sym = self.symtable.find_global_error(id.clone(), SymbolType::Func, Some(check_args));
+                        return Expression::FuncCall {id: id, args: args, typ: sym.typ};
+                    }
+                }
+            }
         }
         let lb = self.match_t(TokenType::LeftBracket);
         if lb != None {
@@ -382,7 +399,7 @@ impl Parser {
                 // Find the symbol in the symbol table
                 let sym = self.symtable.find_global_error(id.clone().unwrap(), SymbolType::Struct, None);
                 
-                if sym.arg_types[field_num].1 != expr.validate() {
+                if sym.arg_types[field_num] != expr.validate() {
                     // If the type of the expected field is not equal to the given field emit an error
                     emit_error("The type of this expression does not match the corresponding field".to_string(), "".to_string(), &self.tokens[self.pos - 1], ErrorType::MismatchedTypes);
                 }
@@ -519,9 +536,9 @@ impl Parser {
         }
 
         // Add correct symbols
-        let mut types: Vec<(String, String)> = Vec::new();
+        let mut types: Vec<String> = Vec::new();
         for field in fields.iter() {
-            types.push(field.clone());
+            types.push(field.clone().1);
         }
         self.symtable.add_symbol(id.clone().unwrap(), id.clone().unwrap(), SymbolType::Struct, format!("%.{}", self.id_c), types);
         
@@ -529,10 +546,10 @@ impl Parser {
         return Node::Struct {id: id.unwrap(), fields: fields};
     }
 
-    /// Parses a function call
+    /// Parses a function call with no semi-colon
     /// # Example
-    /// write(5);
-    fn func_call(&mut self, start: usize) -> Node {
+    /// foo(5)
+    fn func_call_no_semi(&mut self, start: usize) -> Node {
         self.pos = start;
 
         // Match an identifier
@@ -572,17 +589,29 @@ impl Parser {
         if rp == None {
             emit_error("Expected a right parenthesis".to_string(), "help: Insert a right parenthesis after this token".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
         }
-        
-        // Match a semi-colon after the right parenthesis
-        let semi = self.match_t(TokenType::SemiColon);
-        if semi == None {
-            emit_error("Expected semi-colon".to_string(), "help: Insert a semi-colon after this parenthesis".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
-        }
         match id.clone().unwrap().as_str() {
             "write" => {},
             name => {self.symtable.find_global_error(name.to_string(), SymbolType::Func, None);}
         };
         return Node::FuncCall {id: id.unwrap(), args: args};
+    }
+
+    fn func_call(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        let fc = self.func_call_no_semi(self.pos);
+        if fc == Node::Non {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        // Match a semi-colon after the right parenthesis
+        let semi = self.match_t(TokenType::SemiColon);
+        if semi == None {
+            emit_error("Expected semi-colon".to_string(), "help: Insert a semi-colon after this parenthesis".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+
+        return fc;
     }
 
     /// Parse an assignment

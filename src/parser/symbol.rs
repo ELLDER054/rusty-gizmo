@@ -23,7 +23,7 @@ pub struct Symbol {
     pub gen_id: String,
 
     /// Stores the names and types of the arguments if there are any arguments
-    pub arg_types: Vec<(String, String)>
+    pub arg_types: Vec<String>
 }
 
 /// Stores information for each scope
@@ -48,7 +48,7 @@ pub struct SymbolController {
 /// Implement functions for the symbol table
 impl SymbolController {
     /// Adds a symbol to the current scope of the symbol table
-    pub fn add_symbol(&mut self, id: String, typ: String, symtyp: SymbolType, gen_id: String, arg_types: Vec<(String, String)>) {
+    pub fn add_symbol(&mut self, id: String, typ: String, symtyp: SymbolType, gen_id: String, arg_types: Vec<String>) {
         // If the symbol already exists, print an error
         if self.find(id.clone(), symtyp.clone(), Some(arg_types.clone())) != None {
             eprintln!("Identifer '{}' already exists", id);
@@ -74,7 +74,7 @@ impl SymbolController {
 
     /// Finds a symbol in the current scope
     /// Returns None if it doesn't exist
-    pub fn find(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> Option<&Symbol> {
+    pub fn find(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<String>>) -> Option<&Symbol> {
         // Loop through the current symbols
         for sym in self.current.symbols.iter() {
             // If the symbol matches, return the symbol
@@ -95,7 +95,7 @@ impl SymbolController {
 
     /// Finds a symbol in the global scope
     /// Returns None if it doesn't exist
-    pub fn find_global(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> Option<Symbol> {
+    pub fn find_global(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<String>>) -> Option<Symbol> {
         // Loop through the current symbols
         let mut current: Option<Box<Scope>> = Some(Box::new(self.current.clone()));
         while current != None {
@@ -121,7 +121,7 @@ impl SymbolController {
 
     /// Finds a symbol in the global scope
     /// Returns None if it doesn't exist
-    pub fn find_global_error(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<(String, String)>>) -> Symbol {
+    pub fn find_global_error(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<String>>) -> Symbol {
         let sym = self.find_global(id.clone(), symtyp, arg_types);
         if sym == None {
             // The symbol wasn't found, print an error

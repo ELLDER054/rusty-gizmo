@@ -35,9 +35,9 @@ impl Lexer {
     }
 
     /// Advances current place in code by incrementing position and column
-    fn advance(&mut self) {
-        self.pos += 1;
-        self.col += 1;
+    fn advance(&mut self, sight: usize) {
+        self.pos += sight;
+        self.col += sight;
     }
 
     /// Returns the next character in code
@@ -54,7 +54,7 @@ impl Lexer {
     /// `a` or `\n`
     fn parse_character(&mut self) -> String {
         if self.peek(0) == '\\' {
-            self.advance();
+            self.advance(1);
             return match self.peek(0) {
                 'n'  => "\\0A",
                 't'  => "\\09",
@@ -98,11 +98,9 @@ impl Lexer {
 
             // Match the character and get the token's type and value
             let (value, typ): (&str, TokenType) = match c {
-                // TODO: Make "advance()" take a parameter that tells how many to advance
                 '/' if self.peek(1) == '/' => {
                     // Skip over the '//'
-                    self.advance();
-                    self.advance();
+                    self.advance(2);
 
                     // Contine advancing until a newline is found or the end
                     // of the input is reached
@@ -111,52 +109,52 @@ impl Lexer {
                             break;
                         }
                         c = self.peek(1);
-                        self.advance();
+                        self.advance(1);
                     }
                     continue;
                 },
-                '!' if self.peek(1) == '=' => {self.advance(); self.advance(); ("!=", TokenType::NotEqual)},
-                '+' => {self.advance(); ("+", TokenType::Plus)},
-                '-' => {self.advance(); ("-", TokenType::Dash)},
-                '*' => {self.advance(); ("*", TokenType::Star)},
-                '/' => {self.advance(); ("/", TokenType::Slash)},
-                '(' => {self.advance(); ("(", TokenType::LeftParen)},
-                ')' => {self.advance(); (")", TokenType::RightParen)},
-                '{' => {self.advance(); ("{", TokenType::LeftBrace)},
-                '}' => {self.advance(); ("}", TokenType::RightBrace)},
-                '[' => {self.advance(); ("[", TokenType::LeftBracket)},
-                ']' => {self.advance(); ("]", TokenType::RightBracket)},
-                '=' if self.peek(1) == '=' => {self.advance(); self.advance(); ("==", TokenType::EqualEqual)},
-                '=' => {self.advance(); ("=", TokenType::Equal)},
-                ';' => {self.advance(); (";", TokenType::SemiColon)},
-                '>' if self.peek(1) == '=' => {self.advance(); self.advance(); (">=", TokenType::GreaterEqual)},
-                '>' => {self.advance(); (">", TokenType::GreaterThan)},
-                '<' if self.peek(1) == '=' => {self.advance(); self.advance(); ("<=", TokenType::LessEqual)},
-                '<' => {self.advance(); ("<", TokenType::LessThan)},
-                ':' => {self.advance(); (":", TokenType::Colon)},
-                ',' => {self.advance(); (",", TokenType::Comma)},
-                '.' => {self.advance(); (".", TokenType::Dot)},
+                '!' if self.peek(1) == '=' => {self.advance(2); ("!=", TokenType::NotEqual)},
+                '+' => {self.advance(1); ("+", TokenType::Plus)},
+                '-' => {self.advance(1); ("-", TokenType::Dash)},
+                '*' => {self.advance(1); ("*", TokenType::Star)},
+                '/' => {self.advance(1); ("/", TokenType::Slash)},
+                '(' => {self.advance(1); ("(", TokenType::LeftParen)},
+                ')' => {self.advance(1); (")", TokenType::RightParen)},
+                '{' => {self.advance(1); ("{", TokenType::LeftBrace)},
+                '}' => {self.advance(1); ("}", TokenType::RightBrace)},
+                '[' => {self.advance(1); ("[", TokenType::LeftBracket)},
+                ']' => {self.advance(1); ("]", TokenType::RightBracket)},
+                '=' if self.peek(1) == '=' => {self.advance(2); ("==", TokenType::EqualEqual)},
+                '=' => {self.advance(1); ("=", TokenType::Equal)},
+                ';' => {self.advance(1); (";", TokenType::SemiColon)},
+                '>' if self.peek(1) == '=' => {self.advance(2); (">=", TokenType::GreaterEqual)},
+                '>' => {self.advance(1); (">", TokenType::GreaterThan)},
+                '<' if self.peek(1) == '=' => {self.advance(2); ("<=", TokenType::LessEqual)},
+                '<' => {self.advance(1); ("<", TokenType::LessThan)},
+                ':' => {self.advance(1); (":", TokenType::Colon)},
+                ',' => {self.advance(1); (",", TokenType::Comma)},
+                '.' => {self.advance(1); (".", TokenType::Dot)},
                 // Ignore whitespace
                 ' ' | '\t' => {
-                    self.advance();
+                    self.advance(1);
                     continue;
                 },
                 // For a newline, increment "lineno", increment position, and reset the column
                 '\n' => {
                     lineno += 1;
-                    self.advance();
+                    self.advance(1);
                     self.col = 0;
                     continue;
                 },
                 '\'' => {
-                    self.advance();
+                    self.advance(1);
                     _chr = self.parse_character();
-                    self.advance();
+                    self.advance(1);
                     if self.peek(0) != '\'' {
                         let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
                         emit_error("Expected a single quote".to_string(), "help: Insert a single quote after this character".to_string(), &empty_token, ErrorType::ExpectedToken);
                     }
-                    self.advance();
+                    self.advance(1);
                     (&_chr, TokenType::Char)
                 },
                 '"' => {
@@ -164,7 +162,7 @@ impl Lexer {
                     c = self.peek(1);
 
                     // Advance and consume the '"'
-                    self.advance();
+                    self.advance(1);
 
                     let mut len = 0;
 
@@ -183,12 +181,12 @@ impl Lexer {
                         c = self.peek(1);
 
                         // Advance our position and column
-                        self.advance();
+                        self.advance(1);
                         len += 1;
                     }
 
                     // Advance and consume the second '"'
-                    self.advance();
+                    self.advance(1);
 
                     string = format!("{}.{}", len, string);
 
@@ -205,7 +203,7 @@ impl Lexer {
                         c = self.peek(1);
 
                         // Advance the position and column
-                        self.advance();
+                        self.advance(1);
                     }
 
                     // Match the identifier against all the keywords to find the appropriate token type
@@ -239,7 +237,7 @@ impl Lexer {
                         c = self.peek(1);
                         
                         // Advance the postion and column
-                        self.advance();
+                        self.advance(1);
                     }
 
                     // If the next character is a dot, the number must be a
@@ -247,7 +245,7 @@ impl Lexer {
                     if c == '.' {
                         // Skip over the dot
                         c = self.peek(1);
-                        self.advance();
+                        self.advance(1);
                         digit.push('.');
 
                         // If a digit is not found after the dot, print an error
@@ -261,7 +259,7 @@ impl Lexer {
                         while self.is_digit(c) {
                             digit.push(c);
                             c = self.peek(1);
-                            self.advance();
+                            self.advance(1);
                         }
 
                         // If a dot is not found after that, override the token

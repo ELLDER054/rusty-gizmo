@@ -5,3 +5,4 @@ authors = [""]
 edition = "2018"
 
 [dependencies]
+"colored" = "1.0.0"
