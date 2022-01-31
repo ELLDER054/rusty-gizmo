@@ -3,26 +3,48 @@
 pub enum SymbolType {
     Var,
     Struct,
-    //Const,
     Func
 }
 
-/// Stores information for each symbol
+/// Stores information for each variable symbol
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub struct Symbol {
+pub struct VarSymbol {
     /// Identifier of the symbol
     pub id: String,
 
     /// Type of the symbol (i.e., int or string)
     pub typ: String,
 
-    /// Symbol type of the symbol (i.e., var or func)
-    pub symtyp: SymbolType,
+    /// Stores the id of the symbol in ir for code generation
+    pub gen_id: String,
+}
+
+/// Stores information for each function symbol
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct FuncSymbol {
+    /// Identifier of the symbol
+    pub id: String,
+
+    /// Type of the symbol (i.e., int or string)
+    pub typ: String,
 
     /// Stores the id of the symbol in ir for code generation
     pub gen_id: String,
 
-    /// Stores the names and types of the arguments if there are any arguments
+    /// Stores the types of the arguments
+    pub arg_types: Vec<String>
+}
+
+/// Stores information for each struct symbol
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct StructSymbol {
+    /// Identifier of the symbol
+    pub id: String,
+
+    /// Stores the id of the symbol in ir for code generation
+    pub gen_id: String,
+
+    /// Stores the types of the arguments
     pub arg_types: Vec<String>
 }
 
@@ -36,7 +58,9 @@ pub struct Scope {
     pub children: Vec<Scope>,
 
     /// Symbols of the scope
-    pub symbols: Vec<Symbol>
+    pub var_symbols:    Vec<VarSymbol>,
+    pub func_symbols:   Vec<FuncSymbol>,
+    pub struct_symbols: Vec<StructSymbol>
 }
 
 /// Stores information about the symbol table
@@ -48,20 +72,24 @@ pub struct SymbolController {
 /// Implement functions for the symbol table
 impl SymbolController {
     /// Adds a symbol to the current scope of the symbol table
-    pub fn add_symbol(&mut self, id: String, typ: String, symtyp: SymbolType, gen_id: String, arg_types: Vec<String>) {
+    pub fn add_symbol(&mut self, id: String, typ: String, symtyp: SymbolType, gen_id: String, arg_types: Option<Vec<String>>) {
         // If the symbol already exists, print an error
-        if self.find(id.clone(), symtyp.clone(), Some(arg_types.clone())) != None {
+        if self.find(id.clone(), symtyp.clone()) != false {
             eprintln!("Identifer '{}' already exists", id);
             std::process::exit(1);
         }
 
         // Add the new symbol to the current scope
-        self.current.symbols.push(Symbol {id: id, typ: typ, symtyp: symtyp, gen_id: gen_id, arg_types: arg_types});
+        match symtyp.clone() {
+            SymbolType::Var    => self.current.var_symbols.push(VarSymbol {id: id, typ: typ, gen_id: gen_id}),
+            SymbolType::Func   => self.current.func_symbols.push(FuncSymbol {id: id, typ: typ, gen_id: gen_id, arg_types: arg_types.unwrap_or(Vec::new())}),
+            SymbolType::Struct => self.current.func_symbols.push(FuncSymbol {id: id, typ: typ, gen_id: gen_id, arg_types: arg_types.unwrap_or(Vec::new())}),
+        }
     }
 
     /// Adds a scope to the symbol table
     pub fn add_scope(&mut self) {
-        let new = Scope {parent: Some(Box::new(self.current.clone())), children: Vec::new(), symbols: Vec::new()};
+        let new = Scope {parent: Some(Box::new(self.current.clone())), children: Vec::new(), var_symbols: Vec::new(), func_symbols: Vec::new(), struct_symbols: Vec::new()};
         self.current.children.push(new.clone());
         self.current = new.clone();
     }
@@ -74,42 +102,50 @@ impl SymbolController {
 
     /// Finds a symbol in the current scope
     /// Returns None if it doesn't exist
-    pub fn find(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<String>>) -> Option<&Symbol> {
+    pub fn find(&self, id: String, symtyp: SymbolType) -> bool {
         // Loop through the current symbols
-        for sym in self.current.symbols.iter() {
-            // If the symbol matches, return the symbol
-            if arg_types == None {
-                if sym.id == id && sym.symtyp == symtyp {
-                    return Some(sym);
+        match symtyp {
+            SymbolType::Var => {
+                for sym in self.current.var_symbols.iter() {
+                    // If the symbol matches, return the symbol
+                    if sym.id == id {
+                        return true;
+                    }
                 }
-            } else {
-                if sym.id == id && sym.symtyp == symtyp && Some(sym.arg_types.clone()) == arg_types {
-                    return Some(sym);
+            },
+            SymbolType::Func => {
+                for sym in self.current.func_symbols.iter() {
+                    // If the symbol matches, return the symbol
+                    if sym.id == id {
+                        return true;
+                    }
                 }
-            }
-        }
+            },
+            SymbolType::Struct => {
+                for sym in self.current.struct_symbols.iter() {
+                    // If the symbol matches, return the symbol
+                    if sym.id == id {
+                        return true;
+                    }
+                }
+            },
+        };
 
         // The symbol wasn't found, return None
-        return None;
+        return false;
     }
 
-    /// Finds a symbol in the global scope
+    /// Finds a variable identifier in the global scope
     /// Returns None if it doesn't exist
-    pub fn find_global(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<String>>) -> Option<Symbol> {
+    pub fn find_global_var(&self, id: String) -> Option<VarSymbol> {
         // Loop through the current symbols
         let mut current: Option<Box<Scope>> = Some(Box::new(self.current.clone()));
         while current != None {
             let cur = *(current.clone().unwrap());
-            for sym in cur.symbols.iter() {
+            for sym in cur.var_symbols.iter() {
                 // If the symbol matches, return the symbol
-                if arg_types == None {
-                    if sym.id.clone() == id && sym.symtyp.clone() == symtyp {
-                        return Some(Symbol {id: sym.id.clone(), typ: sym.typ.clone(), gen_id: sym.gen_id.clone(), symtyp: sym.symtyp.clone(), arg_types: sym.arg_types.clone()});
-                    }
-                } else {
-                    if sym.id == id && sym.symtyp == symtyp && Some(sym.arg_types.clone()) == arg_types {
-                        return Some(sym.clone());
-                    }
+                if sym.id == id {
+                    return Some(sym.clone());
                 }
             }
             current = current.clone().unwrap().parent.clone();
@@ -119,10 +155,76 @@ impl SymbolController {
         return None;
     }
 
-    /// Finds a symbol in the global scope
+    /// Finds a function identifier in the global scope
     /// Returns None if it doesn't exist
-    pub fn find_global_error(&self, id: String, symtyp: SymbolType, arg_types: Option<Vec<String>>) -> Symbol {
-        let sym = self.find_global(id.clone(), symtyp, arg_types);
+    pub fn find_global_func(&self, id: String) -> Option<FuncSymbol> {
+        // Loop through the current symbols
+        let mut current: Option<Box<Scope>> = Some(Box::new(self.current.clone()));
+        while current != None {
+            let cur = *(current.clone().unwrap());
+            for sym in cur.func_symbols.iter() {
+                // If the symbol matches, return the symbol
+                if sym.id == id {
+                    return Some(sym.clone());
+                }
+            }
+            current = current.clone().unwrap().parent.clone();
+        }
+
+        // The symbol wasn't found, return None
+        return None;
+    }
+
+    /// Finds a struct identifier in the global scope
+    /// Returns None if it doesn't exist
+    pub fn find_global_struct(&self, id: String) -> Option<StructSymbol> {
+        // Loop through the current symbols
+        let mut current: Option<Box<Scope>> = Some(Box::new(self.current.clone()));
+        while current != None {
+            let cur = *(current.clone().unwrap());
+            for sym in cur.struct_symbols.iter() {
+                // If the symbol matches, return the symbol
+                if sym.id == id {
+                    return Some(sym.clone());
+                }
+            }
+            current = current.clone().unwrap().parent.clone();
+        }
+
+        // The symbol wasn't found, return None
+        return None;
+    }
+
+    /// Finds a variable identifier in the global scope
+    /// Returns None if it doesn't exist
+    pub fn find_global_var_error(&self, id: String) -> VarSymbol {
+        let sym = self.find_global_var(id.clone());
+        if sym == None {
+            // The symbol wasn't found, print an error
+            eprintln!("Identifier '{}' not found", id);
+            std::process::exit(1);
+        } else {
+            return sym.unwrap();
+        }
+    }
+
+    /// Finds a function identifier in the global scope
+    /// Returns None if it doesn't exist
+    pub fn find_global_func_error(&self, id: String) -> FuncSymbol {
+        let sym = self.find_global_func(id.clone());
+        if sym == None {
+            // The symbol wasn't found, print an error
+            eprintln!("Identifier '{}' not found", id);
+            std::process::exit(1);
+        } else {
+            return sym.unwrap();
+        }
+    }
+
+    /// Finds a struct symbol in the global scope
+    /// Returns None if it doesn't exist
+    pub fn find_global_struct_error(&self, id: String) -> StructSymbol {
+        let sym = self.find_global_struct(id.clone());
         if sym == None {
             // The symbol wasn't found, print an error
             eprintln!("Identifier '{}' not found", id);

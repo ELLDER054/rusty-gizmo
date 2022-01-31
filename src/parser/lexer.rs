@@ -139,7 +139,8 @@ impl Lexer {
                     self.advance(1);
                     continue;
                 },
-                // For a newline, increment "lineno", increment position, and reset the column
+                // For a newline, increment the line number, increment the
+                // position, and reset the column
                 '\n' => {
                     lineno += 1;
                     self.advance(1);
@@ -152,7 +153,12 @@ impl Lexer {
                     self.advance(1);
                     if self.peek(0) != '\'' {
                         let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
-                        emit_error("Expected a single quote".to_string(), "help: Insert a single quote after this character".to_string(), &empty_token, ErrorType::ExpectedToken);
+                        emit_error(
+                            "Expected a single quote".to_string(),
+                            "help: Insert a single quote after this character",
+                            &empty_token,
+                            ErrorType::ExpectedToken
+                        );
                     }
                     self.advance(1);
                     (&_chr, TokenType::Char)
@@ -172,7 +178,12 @@ impl Lexer {
                         // a second '"', give error
                         if c == '\n' || c == '\0' {
                             let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
-                            emit_error("Closing double quote was not found".to_string(), "help: Add a closing double quote to signal the end of the string".to_string(), &empty_token, ErrorType::UnexpectedEOF);
+                            emit_error(
+                                "Closing double quote was not found".to_string(),
+                                "help: Add a closing double quote to signal the end of the string",
+                                &empty_token,
+                                ErrorType::UnexpectedEOF
+                           );
                         }
                         // Add the character to allocated "string" variable
                         string.push_str(self.parse_character().as_str());
@@ -252,7 +263,12 @@ impl Lexer {
                         // If a digit is not found after the dot, print an error
                         if !self.is_digit(c) {
                             let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
-                            emit_error("Expected number after dot".to_string(), "help: Take away the dot or insert a number after the dot".to_string(), &empty_token, ErrorType::DecNotFound);
+                            emit_error(
+                                "Expected number after dot".to_string(),
+                                "help: Take away the dot or insert a number after the dot",
+                                &empty_token,
+                                ErrorType::DecNotFound
+                            );
                         }
 
                         // Otherwise, continue to collect digits and add to the
@@ -269,7 +285,12 @@ impl Lexer {
                             typ = TokenType::Dec;
                         } else {
                             let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
-                            emit_error("Unexpected dot".to_string(), "help: Take away this dot".to_string(), &empty_token, ErrorType::DecTooManyDots);
+                            emit_error(
+                                "Unexpected dot".to_string(),
+                                "help: Take away this dot",
+                                &empty_token,
+                                ErrorType::DecTooManyDots
+                            );
                         };
                     }
                     
@@ -279,7 +300,12 @@ impl Lexer {
                 // Finding unknown characters results in an error
                 _ => {
                     let empty_token = Token {typ: TokenType::Error, value: c.to_string(), lineno: lineno, col: begin, line: line.to_string()};
-                    emit_error(format!("Unknown character '{}'", c), "".to_string(), &empty_token, ErrorType::UnknownChar);
+                    emit_error(
+                        format!("Unknown character '{}'", c),
+                        "",
+                        &empty_token,
+                        ErrorType::UnknownChar
+                    );
                     continue;
                 },
             };

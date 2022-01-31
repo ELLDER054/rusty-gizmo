@@ -32,8 +32,11 @@ fn main() {
     let mut out_file = File::create("a.ll").expect("Couldn't create the output file");
     out_file.write_all((&output).as_bytes()).expect("Couldn't write to the output file");
     
-    // Call 'lli' on the created file
-    Command::new("lli a.ll");
+    // Call 'llc' on the created file
+    Command::new("llc").args(&["a.ll", "--relocation-model=pic", "-filetype=obj"]).output().expect("Failed to call llc");
+    Command::new("rm").arg("a.ll").output().expect("Failed to call rm1");
+    Command::new("gcc").args(&["a.o", "-o", "a.out"]).output().expect("Failed to call gcc");
+    Command::new("rm").arg("a.o").output().expect("Failed to rm2");
 }
 
 /// Compiles the given code
@@ -45,7 +48,7 @@ fn compile(code: String) -> String {
     let tokens: Vec<Token> = lexer.lex();
 
     // Create a parser and a symbol table
-    let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), symbols: Vec::new()}};
+    let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), var_symbols: Vec::new(), func_symbols: Vec::new(), struct_symbols: Vec::new()}};
     let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0};
 
     // Parse the tokens
