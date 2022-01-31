@@ -34,6 +34,7 @@ pub struct IRBuilder {
     pub code: String,
     pub ends: String,
     pub ssa_num: i32,
+    pub save: i32,
     pub tmp_num: i32,
     pub str_num: i32,
     pub label_num: i32,
@@ -41,7 +42,7 @@ pub struct IRBuilder {
 
 impl IRBuilder {
     fn construct() -> IRBuilder {
-        IRBuilder {code: "define i32 @main() {\nentry:\n".to_string(), ends: "\tret i32 0\n}\n".to_string(), ssa_num: 0, tmp_num: 0, str_num: 0, label_num: 0}
+        IRBuilder {code: "define i32 @main() {\nentry:\n".to_string(), ends: "\tret i32 0\n}\n".to_string(), ssa_num: 0, tmp_num: 0, str_num: 0, label_num: 0, save: 0}
     }
 
     fn create_alloca(&mut self, typ: String, name: Option<String>) -> String {
@@ -85,6 +86,16 @@ impl IRBuilder {
 
     fn create_ends(&mut self, s: String) {
         self.ends.push_str(s.as_str());
+    }
+
+    fn enter_function(&mut self) {
+        self.save = self.ssa_num;
+        self.ssa_num = 0;
+    }
+
+    fn exit_function(&mut self) {
+        self.ssa_num = self.save;
+        self.save = 0;
     }
 
     fn create_new_struct(&mut self, id: String, fields: Vec<(String, String)>) -> String {
@@ -132,6 +143,7 @@ impl Generator {
         for node in nodes.iter() {
             match *node.clone() {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
+                Node::FuncDecl {id, args, body} => self.generate_func_decl(id.clone(), args.clone(), body.clone()),
                 Node::While {cond, body} => self.generate_while_loop(cond.clone(), body.clone()),
                 Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => self.generate_func_call(id.clone(), args.clone()),
@@ -270,6 +282,25 @@ impl Generator {
         self.ir_b.create_store(gen_expr, var, type_of(expr.clone().validate().to_string()));
     }
 
+    fn generate_func_decl(&mut self, id: String, args: Vec<(String, String)>, body: Box<Node>) {
+        let save = self.ir_b.code.clone();
+        let mut arg_code = String::new();
+        let mut arg_num = 0;
+        for arg in args.iter() {
+            arg_code.push_str(format!("{}* {}", type_of(arg.0.clone()), arg.1).as_str());
+            if arg_num + 1 < args.len() {
+                arg_code.push_str(", ");
+            }
+            arg_num += 1;
+        }
+        self.ir_b.code = format!("define void @{}({}) {{\nentry:\n", id, arg_code);
+        self.ir_b.enter_function();
+        self.generate(vec![body]);
+        self.ir_b.exit_function();
+        self.ir_b.code.push_str("\tret void\n}\n");
+        self.ir_b.code = format!("{}\n{}", self.ir_b.code, save.clone());
+    }
+
     fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>) {
         let gen_cond = self.generate_expression(cond.clone(), true);
         self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond, self.ir_b.label_num, self.ir_b.label_num + 1, self.ir_b.label_num).as_str());
@@ -290,7 +321,14 @@ impl Generator {
         let mut arg_values = String::new();
         for arg in args.iter() {
             let gen_arg = self.generate_expression(*arg.clone(), true);
-            arg_values.push_str(format!("{} {}", type_of((*arg.clone().validate()).to_string()), gen_arg).as_str());
+            let typ = type_of((*arg.clone().validate()).to_string());
+            if id.clone().as_str() != "write" {
+                let alloca = self.ir_b.create_alloca(typ.clone(), None);
+                self.ir_b.create_store(gen_arg.clone(), alloca.clone(), typ.clone());
+                arg_values.push_str(format!("{}* {}", typ, alloca).as_str());
+            } else {
+                arg_values.push_str(format!("{} {}", typ, gen_arg).as_str());
+            }
             if arg_num + 1 < args.len() {
                 arg_values.push(',');
             }

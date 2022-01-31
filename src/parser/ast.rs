@@ -12,6 +12,13 @@ pub enum Node {
         gen_id: String,
     },
 
+    /// Function declaration
+    FuncDecl {
+        id: String,
+        args: Vec<(String, String)>,
+        body: Box<Node>
+    },
+
     /// Assign statement
     /// let a: int = 5;
     /// or

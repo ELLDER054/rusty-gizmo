@@ -11,6 +11,7 @@ use self::ast::Node;
 use self::ast::Expression;
 use self::symbol::SymbolController;
 use self::symbol::SymbolType;
+use self::symbol::Symbol;
 
 /// Stores information for a "Parser"
 pub struct Parser {
@@ -546,6 +547,67 @@ impl Parser {
         return Node::Struct {id: id.unwrap(), fields: fields};
     }
 
+    /// Parse a function declaration
+    /// # Example
+    /// func a(args) : type {
+    ///     // statements
+    /// }
+    fn func_declaration(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Match the 'func' keyword
+        let key = self.match_t(TokenType::Func);
+        if key == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        // Match an identifier
+        let id = self.match_t(TokenType::Id);
+        if id == None {
+            emit_error("Expected an identifier".to_string(), "help: Insert an identifier after this 'func' keyword".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+
+        // Match a left parenthesis
+        let lp = self.match_t(TokenType::LeftParen);
+        if lp == None {
+            emit_error("Expected a left parenthesis".to_string(), "help: Insert a left parenthesis after this identifier".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+
+        let mut args: Vec<(String, String)> = Vec::new();
+        let mut arg_types: Vec<String>      = Vec::new();
+        let mut arg_symbols: Vec<Symbol>    = Vec::new();
+        loop {
+            let typ = self.rec_type(self.pos);
+            if typ == None {
+                break;
+            }
+            let id = self.match_t(TokenType::Id);
+            if id == None {
+                break;
+            }
+            args.push((typ.clone().unwrap(), format!("%.{}", self.id_c)));
+            arg_types.push(typ.clone().unwrap());
+            arg_symbols.push(Symbol {id: id.unwrap(), typ: typ.unwrap(), symtyp: SymbolType::Var, gen_id: format!("%.{}", self.id_c), arg_types: Vec::new()});
+            self.id_c += 1;
+            let comma = self.match_t(TokenType::Comma);
+            if comma == None {
+                break;
+            }
+        }
+
+        // Match a right parenthesis
+        let rp = self.match_t(TokenType::RightParen);
+        if rp == None {
+            emit_error("Expected a right parenthesis".to_string(), "help: Insert a right parenthesis after this token".to_string(), &self.tokens[self.pos - 1], ErrorType::ExpectedToken);
+        }
+
+        let body = self.block_statement(self.pos, arg_symbols);
+
+        self.symtable.add_symbol(id.clone().unwrap(), "void".to_string(), SymbolType::Func, id.clone().unwrap(), arg_types);
+        return Node::FuncDecl {id: id.unwrap(), args: args, body: Box::new(body)};
+    }
+
     /// Parses a function call with no semi-colon
     /// # Example
     /// foo(5)
@@ -658,7 +720,7 @@ impl Parser {
     /// {
     ///     write(3);
     /// }
-    fn block_statement(&mut self, start: usize) -> Node {
+    fn block_statement(&mut self, start: usize, pre_declared: Vec<Symbol>) -> Node {
         self.pos = start;
 
         // Match a left brace
@@ -668,6 +730,9 @@ impl Parser {
             return Node::Non;
         }
         self.symtable.add_scope();
+        for symbol in pre_declared.iter() {
+            self.symtable.add_symbol(symbol.clone().id, symbol.clone().typ, symbol.clone().symtyp, symbol.clone().gen_id, symbol.clone().arg_types);
+        }
         let mut statements: Vec<Box<Node>> = Vec::new();
         while (&self.tokens[self.pos]).typ != TokenType::RightBrace {
             statements.push(Box::new(self.statement(self.pos)));
@@ -803,6 +868,12 @@ impl Parser {
             return func_call;
         }
 
+        // Check for a function declaration
+        let func_decl = self.func_declaration(self.pos);
+        if func_decl != Node::Non {
+            return func_decl;
+        }
+
         // Check for an assignment statement
         let assign = self.assign_statement(self.pos);
         if assign != Node::Non {
@@ -816,7 +887,7 @@ impl Parser {
         }
 
         // Check for a struct definition
-        let block = self.block_statement(self.pos);
+        let block = self.block_statement(self.pos, vec![]);
         if block != Node::Non {
             return block;
         }

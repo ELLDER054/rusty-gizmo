@@ -42,6 +42,7 @@ pub enum TokenType {
     Comma,        // ,
     Dot,          // .
     Let,
+    Func,
     While,
     New,
     Struct,

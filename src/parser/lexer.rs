@@ -209,6 +209,7 @@ impl Lexer {
                     // Match the identifier against all the keywords to find the appropriate token type
                     let id_type: TokenType = match name.as_str() {
                         "let"    => TokenType::Let,
+                        "func"    => TokenType::Func,
                         "while"  => TokenType::While,
                         "new"    => TokenType::New,
                         "struct" => TokenType::Struct,
