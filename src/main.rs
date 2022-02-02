@@ -15,6 +15,7 @@ use std::process::Command;
 fn main() {
     let mut file_name:     String = String::from("a.ll");
     let mut out_file_name: String = String::from("a.out");
+    let mut out_ir_name: String = String::from("a.ll");
     let mut has_file:      bool   = false;
     let mut emit_llvm:     bool   = false;
 
@@ -40,6 +41,7 @@ fn main() {
         } else if args[arg_num] == "-o" {
             arg_num += 1;
             out_file_name = args[arg_num].clone();
+            out_ir_name = args[arg_num].clone();
             arg_num += 1;
         } else if args[arg_num] == "-emit-llvm" {
             arg_num += 1;
@@ -48,7 +50,7 @@ fn main() {
     }
 
     // Open the input file
-    let file: String = fs::read_to_string(file_name).unwrap();
+    let file: String = fs::read_to_string(file_name.clone()).unwrap();
 
     // Compile the input file and store the llvm ir in 'output'
     let output = compile(file);
@@ -56,13 +58,13 @@ fn main() {
     // Open an output file and write to it
     let mut out_file: File;
     if emit_llvm == true {
-        out_file = File::create(out_file_name.clone()).expect("Couldn't create the output file");
+        out_file = File::create(out_ir_name.clone()).expect("Couldn't create the output file");
     } else {
         out_file = File::create("a.ll").expect("Couldn't create the output file");
     }
     out_file.write_all((&output).as_bytes()).expect("Couldn't write to the output file");
     
-    if emit_llvm != true {
+    if emit_llvm == false {
         // Call 'llc' on the created file
         Command::new("llc").args(&["a.ll", "--relocation-model=pic", "-filetype=obj"]).output().expect("Failed to call llc");
         Command::new("rm").arg("a.ll").output().expect("Failed to call rm1");
@@ -81,7 +83,7 @@ fn compile(code: String) -> String {
 
     // Create a parser and a symbol table
     let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), var_symbols: Vec::new(), func_symbols: Vec::new(), struct_symbols: Vec::new()}};
-    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0};
+    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0, in_function: false, function_typ: "void".to_string()};
 
     // Parse the tokens
     let ast = parser.parse();

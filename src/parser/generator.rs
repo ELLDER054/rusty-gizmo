@@ -192,6 +192,9 @@ pub struct Generator {
     /// Whether or not @printf was declared
     pub dec_printf: bool,
 
+    /// Whether or not @strlen was declared
+    pub dec_strlen: bool,
+
     /// Whether or not @.int was declared
     pub dec_int: bool,
 
@@ -208,7 +211,7 @@ pub struct Generator {
 impl Generator {
     /// Constructs a new code generator
     pub fn construct() -> Generator {
-        Generator {ir_b: IRBuilder::construct(), has_array: false, dec_printf: false, dec_int: false, dec_dec: false, dec_char: false, dec_str: false, format_num: 0}
+        Generator {ir_b: IRBuilder::construct(), has_array: false, dec_printf: false, dec_int: false, dec_dec: false, dec_char: false, dec_str: false, format_num: 0, dec_strlen: false}
     }
 
     /// Destructs the code generator
@@ -221,7 +224,8 @@ impl Generator {
         for node in nodes.iter() {
             match *node.clone() {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
-                Node::FuncDecl {id, args, body} => self.generate_func_decl(id.clone(), args.clone(), body.clone()),
+                Node::Ret {expr} => self.generate_ret_stmt(expr.clone()),
+                Node::FuncDecl {id, typ, args, body} => self.generate_func_decl(id.clone(), typ.clone(), args.clone(), body.clone()),
                 Node::While {cond, body} => self.generate_while_loop(cond.clone(), body.clone()),
                 Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => {
@@ -320,7 +324,7 @@ impl Generator {
                 }
             }
             Expression::FuncCall {id, typ, args} => {
-                self.generate_func_call(id, typ, args)
+                self.generate_func_call(id, type_of(typ), args)
             },
             Expression::Array {values, ..} => {
                 // If %.Arr isn't already declared, declare it
@@ -445,8 +449,14 @@ impl Generator {
         self.ir_b.create_store(gen_expr, var, type_of(expr.clone().validate().to_string()));
     }
 
+    /// Generates code for a return statement
+    fn generate_ret_stmt(&mut self, expr: Expression) {
+        let gen_expr = self.generate_expression(expr.clone(), true);
+        self.ir_b.code.push_str(format!("\tret {} {}\n", type_of(expr.validate().to_string()), gen_expr).as_str());
+    }
+
     /// Generates code for a function declaration
-    fn generate_func_decl(&mut self, id: String, args: Vec<(String, String)>, body: Box<Node>) {
+    fn generate_func_decl(&mut self, id: String, typ: String, args: Vec<(String, String)>, body: Box<Node>) {
         // Save the current code
         let save = self.ir_b.code.clone();
 
@@ -470,7 +480,7 @@ impl Generator {
             arg_num += 1;
         }
 
-        self.ir_b.code = format!("define void @{}({}) {{\nentry:\n", id, arg_code);
+        self.ir_b.code = format!("define {} @{}({}) {{\nentry:\n", type_of(typ), id, arg_code);
         
         // Tell the ir builder to enter a function
         self.ir_b.enter_function();
@@ -481,11 +491,8 @@ impl Generator {
         // Tell the ir builder to exit a function
         self.ir_b.exit_function();
 
-
-        self.ir_b.code.push_str("\tret void\n}\n");
-
         // Reset the code
-        self.ir_b.code = format!("{}\n{}", self.ir_b.code, save.clone());
+        self.ir_b.code = format!("{}\n}}\n{}", self.ir_b.code, save.clone());
     }
 
     /// Generates code for a while-loop
@@ -540,7 +547,7 @@ impl Generator {
             // If the function call is a built-in, don't make the argument
             // a pointer
             // Otherwise, make the argument a pointer
-            if id.clone().as_str() != "write" {
+            if id.clone().as_str() != "write" && id.clone().as_str() != "len" {
                 // Allocate space for the pointer
                 let alloca = self.ir_b.create_alloca(typ.clone(), None);
 
@@ -602,14 +609,30 @@ impl Generator {
                 // Generate the function call
                 self.ir_b.code.push_str(format!("\tcall i32 (i8*, ...) @printf(i8* getelementptr inbounds ([{} x i8], [{0} x i8]* @fmt{}, i32 0, i32 0), {})\n", fmt_len, self.format_num, arg_values.clone()).as_str());
                 self.format_num += 1;
+                self.ir_b.ssa_num += 1;
+            },
+            "len" => {
+                if (*args[0].clone()).validate() == "string" {
+                    // Generate the function call
+                    self.ir_b.code.push_str(format!("\t%{} = call i32 @strlen({})\n", self.ir_b.ssa_num, arg_values.clone()).as_str());
+                    if !self.dec_strlen {
+                        self.ir_b.create_ends(format!("declare i32 @strlen(i8*)\n"));
+                        self.dec_strlen = true;
+                    }
+                    self.ir_b.ssa_num += 1;
+                } else {
+                    let gen_expr = self.generate_expression(*args[0].clone(), false);
+                    let gep = self.ir_b.create_gep("%.Arr".to_string(), gen_expr, vec!["0".to_string(), "1".to_string()]);
+                    self.ir_b.create_load("i32".to_string(), gep);
+                }
             },
             _ => {
                 // Generate the function call
                 self.ir_b.code.push_str(format!("\t%{} = call {} @{}({})\n", self.ir_b.ssa_num, typ.clone(), id.clone(), arg_values.clone()).as_str());
+                self.ir_b.ssa_num += 1;
             }
         };
-        self.ir_b.ssa_num += 1;
-        (self.ir_b.ssa_num - 1).to_string()
+        format!("%{}", self.ir_b.ssa_num - 1)
     }
 
     /// Generates code for a struct declaration

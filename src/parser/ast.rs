@@ -15,8 +15,14 @@ pub enum Node {
     /// Function declaration
     FuncDecl {
         id: String,
+        typ: String,
         args: Vec<(String, String)>,
         body: Box<Node>
+    },
+
+    /// Return statement
+    Ret {
+        expr: Expression
     },
 
     /// Assign statement

@@ -26,6 +26,12 @@ pub struct Parser {
 
     /// Stores the number of identifiers created
     pub id_c: usize,
+
+    /// Whether or not the parser is currently in a function
+    pub in_function: bool,
+
+    /// The parser's current function type
+    pub function_typ: String
 }
 
 /// Implement functions for a "Parser"
@@ -837,10 +843,36 @@ impl Parser {
             );
         }
 
-        let body = self.block_statement(self.pos, arg_symbols);
+        // Match a colon
+        let mut typ: Option<String> = Some(String::from("void"));
+        if self.match_t(TokenType::Colon) != None {
+            typ = self.rec_type(self.pos);
+            if typ == None {
+                emit_error(
+                    "Expected a type".to_string(),
+                    "help: Insert a type after this colon",
+                    &self.tokens[self.pos - 1],
+                    ErrorType::ExpectedToken
+                );
+            }
+        }
 
-        self.symtable.add_symbol(id.clone().unwrap(), "void".to_string(), SymbolType::Func, id.clone().unwrap(), Some(arg_types));
-        return Node::FuncDecl {id: id.unwrap(), args: args, body: Box::new(body)};
+        if self.in_function {
+            emit_error(
+                "Attempted to nest functions".to_string(),
+                "",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        }
+
+        self.in_function = true;
+        self.function_typ = typ.clone().unwrap();
+        let body = self.block_statement(self.pos, arg_symbols);
+        self.in_function = false;
+
+        self.symtable.add_symbol(id.clone().unwrap(), typ.clone().unwrap(), SymbolType::Func, id.clone().unwrap(), Some(arg_types));
+        return Node::FuncDecl {id: id.unwrap(), typ: typ.unwrap(), args: args, body: Box::new(body)};
     }
 
     /// Parses a function call with no semi-colon
@@ -1042,6 +1074,62 @@ impl Parser {
         return Node::While {cond: cond, body: Box::new(body)};
     }
 
+    /// Parses a return statement
+    /// # Example
+    /// ret 5;
+    fn ret_statement(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Match the 'ret' keyword
+        let key = self.match_t(TokenType::Ret);
+        if key == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        // Match an expression
+        let expr = self.expression(self.pos);
+        if expr == Expression::Non {
+            emit_error(
+                "Expected an expression".to_string(),
+                "help: Insert an expression after this 'ret' keyword",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        }
+
+        // Match a semi-colon after the expression
+        let semi = self.match_t(TokenType::SemiColon);
+        if semi == None {
+            emit_error(
+                "Expected a semi-colon".to_string(),
+                "help: Insert a semi-colon after this expression",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        }
+
+        if !self.in_function {
+            emit_error(
+                "Attempted to return from the main scope".to_string(),
+                "",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        }
+
+        if self.function_typ.clone() != expr.clone().validate() {
+            emit_error(
+                "Attempted to return with the incorrect type".to_string(),
+                format!("help: Expected {}, found {}", self.function_typ, expr.clone().validate()).as_str(),
+                &self.tokens[self.pos - 1],
+                ErrorType::MismatchedTypes
+            );
+        }
+
+        return Node::Ret {expr: expr};
+    }
+
     /// Parses a let statement
     /// # Example
     /// let a = 5;
@@ -1114,8 +1202,7 @@ impl Parser {
         if expr == Expression::Non {
             emit_error(
                 "Expected an expression".to_string(),
-                // TOO LONG
-                "help: Take away the equals sign or insert an expression after this equals sign",
+                "help: Insert an expression after this equals sign",
                 &self.tokens[self.pos - 1],
                 ErrorType::ExpectedToken
             );
@@ -1181,6 +1268,12 @@ impl Parser {
             return func_call;
         }
 
+        // Check for a return statement
+        let ret = self.ret_statement(self.pos);
+        if ret != Node::Non {
+            return ret;
+        }
+
         // Check for a function declaration
         let func_decl = self.func_declaration(self.pos);
         if func_decl != Node::Non {
@@ -1239,6 +1332,7 @@ impl Parser {
     pub fn parse(&mut self) -> Vec<Box<Node>> {
         self.pos = 0;
         self.symtable.add_symbol("write".to_string(), "void".to_string(), SymbolType::Func, "@printf".to_string(), None);
+        self.symtable.add_symbol("len".to_string(), "int".to_string(), SymbolType::Func, "@strlen".to_string(), None);
         self.program(0)
     }
 }
