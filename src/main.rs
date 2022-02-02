@@ -13,6 +13,11 @@ use std::io::Write;
 use std::process::Command;
 
 fn main() {
+    let mut file_name:     String = String::from("a.ll");
+    let mut out_file_name: String = String::from("a.out");
+    let mut has_file:      bool   = false;
+    let mut emit_llvm:     bool   = false;
+
     // Collect the command line arguments into a vector
     let args: Vec<String> = env::args().collect();
 
@@ -22,21 +27,48 @@ fn main() {
         return;
     }
 
+    let mut arg_num = 1;
+    while arg_num < args.len() {
+        if !args[arg_num].starts_with('-') {
+            file_name = args[arg_num].clone();
+            if has_file == true {
+                eprintln!("Found multiple file names. Using the most recent");
+            } else {
+                has_file = true;
+            }
+            arg_num += 1;
+        } else if args[arg_num] == "-o" {
+            arg_num += 1;
+            out_file_name = args[arg_num].clone();
+            arg_num += 1;
+        } else if args[arg_num] == "-emit-llvm" {
+            arg_num += 1;
+            emit_llvm = true;
+        }
+    }
+
     // Open the input file
-    let file: String = fs::read_to_string(&args[1]).unwrap();
+    let file: String = fs::read_to_string(file_name).unwrap();
 
     // Compile the input file and store the llvm ir in 'output'
     let output = compile(file);
 
     // Open an output file and write to it
-    let mut out_file = File::create("a.ll").expect("Couldn't create the output file");
+    let mut out_file: File;
+    if emit_llvm == true {
+        out_file = File::create(out_file_name.clone()).expect("Couldn't create the output file");
+    } else {
+        out_file = File::create("a.ll").expect("Couldn't create the output file");
+    }
     out_file.write_all((&output).as_bytes()).expect("Couldn't write to the output file");
     
-    // Call 'llc' on the created file
-    Command::new("llc").args(&["a.ll", "--relocation-model=pic", "-filetype=obj"]).output().expect("Failed to call llc");
-    Command::new("rm").arg("a.ll").output().expect("Failed to call rm1");
-    Command::new("gcc").args(&["a.o", "-o", "a.out"]).output().expect("Failed to call gcc");
-    Command::new("rm").arg("a.o").output().expect("Failed to rm2");
+    if emit_llvm != true {
+        // Call 'llc' on the created file
+        Command::new("llc").args(&["a.ll", "--relocation-model=pic", "-filetype=obj"]).output().expect("Failed to call llc");
+        Command::new("rm").arg("a.ll").output().expect("Failed to call rm1");
+        Command::new("gcc").args(&["a.o", "-o", out_file_name.as_str()]).output().expect("Failed to call gcc");
+        Command::new("rm").arg("a.o").output().expect("Failed to rm2");
+    }
 }
 
 /// Compiles the given code
