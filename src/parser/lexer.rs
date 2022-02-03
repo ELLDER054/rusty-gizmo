@@ -221,6 +221,8 @@ impl Lexer {
                     let id_type: TokenType = match name.as_str() {
                         "let"    => TokenType::Let,
                         "ret"    => TokenType::Ret,
+                        "break"    => TokenType::Break,
+                        "continue"    => TokenType::Continue,
                         "func"    => TokenType::Func,
                         "while"  => TokenType::While,
                         "new"    => TokenType::New,

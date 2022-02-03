@@ -5,10 +5,10 @@ use super::ast::Expression;
 fn type_of(typ: String) -> String {
     let struct_type = format!("%{}", typ);
     match typ.as_str() {
-        "int" => "i32",
-        "dec" => "double",
-        "bool" => "i1",
-        "char" => "i8",
+        "int"    => "i32",
+        "dec"    => "double",
+        "bool"   => "i1",
+        "char"   => "i8",
         "string" => "i8*",
         arr if arr.ends_with(']') => "%.Arr",
         _ => struct_type.as_str()
@@ -18,16 +18,18 @@ fn type_of(typ: String) -> String {
 /// Converts a Gizmo operator to an llvm ir operator
 fn type_of_oper(oper: String) -> String {
     match oper.as_str() {
-        "+" => "add",
-        "-" => "sub",
-        "*" => "mul",
-        "/" => "sdiv",
-        "==" => "icmp eq",
-        "!=" => "icmp ne",
-        "<" => "icmp slt",
-        ">" => "icmp sgt",
-        "<=" => "icmp sle",
-        ">=" => "icmp sge",
+        "+"   => "add",
+        "-"   => "sub",
+        "*"   => "mul",
+        "/"   => "sdiv",
+        "=="  => "icmp eq",
+        "!="  => "icmp ne",
+        "<"   => "icmp slt",
+        ">"   => "icmp sgt",
+        "<="  => "icmp sle",
+        ">="  => "icmp sge",
+        "and" => "and",
+        "or"  => "or",
         _ => ""
     }.to_string()
 }
@@ -48,16 +50,13 @@ pub struct IRBuilder {
 
     /// The number of strings created
     pub str_num: i32,
-
-    /// The number of labels created
-    pub label_num: i32,
 }
 
 /// Implement functions for an ir builder
 impl IRBuilder {
     /// Constructs a new ir builder
     fn construct() -> IRBuilder {
-        IRBuilder {code: "define i32 @main() {\nentry:\n".to_string(), ends: "\tret i32 0\n}\n".to_string(), ssa_num: 0, str_num: 0, label_num: 0, save_ssa_num: 0}
+        IRBuilder {code: "define i32 @main() {\nentry:\n".to_string(), ends: "\tret i32 0\n}\n".to_string(), ssa_num: 0, str_num: 0, save_ssa_num: 0}
     }
 
     /// Creates an alloca statement
@@ -225,8 +224,12 @@ impl Generator {
             match *node.clone() {
                 Node::Let {id: _, expr, gen_id} => self.generate_let_stmt(expr.clone(), gen_id.clone()),
                 Node::Ret {expr} => self.generate_ret_stmt(expr.clone()),
+                Node::Pause {label} => {
+                    self.ir_b.code.push_str(format!("\tbr label %l{}\n", label).as_str());
+                    self.ir_b.ssa_num += 1;
+                },
                 Node::FuncDecl {id, typ, args, body} => self.generate_func_decl(id.clone(), typ.clone(), args.clone(), body.clone()),
-                Node::While {cond, body} => self.generate_while_loop(cond.clone(), body.clone()),
+                Node::While {cond, body, begin, end} => self.generate_while_loop(cond.clone(), body.clone(), begin, end),
                 Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => {
                     self.generate_func_call(id.clone(), "void".to_string(), args.clone());
@@ -496,12 +499,12 @@ impl Generator {
     }
 
     /// Generates code for a while-loop
-    fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>) {
+    fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>, begin: i32, end: i32) {
         // Generate the condition
         let gen_cond = self.generate_expression(cond.clone(), true);
 
         // Jump to the while-label to start the loop
-        self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond, self.ir_b.label_num, self.ir_b.label_num + 1, self.ir_b.label_num).as_str());
+        self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond, begin.clone(), end, begin.clone()).as_str());
         
         // Generate the body of the loop
         self.generate(vec![body]);
@@ -509,10 +512,7 @@ impl Generator {
         // Depending on the condition, either jump back and start the loop
         // again, or exit the loop
         let gen_cond2 = self.generate_expression(cond.clone(), true);
-        self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond2, self.ir_b.label_num, self.ir_b.label_num + 1, self.ir_b.label_num + 1).as_str());
-
-        // Increment the number of labels
-        self.ir_b.label_num += 2;
+        self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond2, begin, end.clone(), end).as_str());
     }
 
     /// Generates code for an assignment

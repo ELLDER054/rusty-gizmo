@@ -25,6 +25,11 @@ pub enum Node {
         expr: Expression
     },
 
+    /// Break or continue statement
+    Pause {
+        label: String,
+    },
+
     /// Assign statement
     /// let a: int = 5;
     /// or
@@ -64,7 +69,9 @@ pub enum Node {
     /// }
     While {
         cond: Expression,
-        body: Box<Node>
+        body: Box<Node>,
+        begin: i32,
+        end: i32
     },
 
     Non,
@@ -249,7 +256,11 @@ fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expression>, right: &'b Box<
         },
         ">=" | "<=" | ">" | "<" => match (*left).validate() {
             "int" => match (*right).validate() {
-                "int" => "bool",
+                "int" | "char" => "bool",
+                _ => "error",
+            },
+            "char" => match (*right).validate() {
+                "int" | "char" => "bool",
                 _ => "error",
             },
             "dec" => match (*right).validate() {

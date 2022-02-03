@@ -43,6 +43,8 @@ pub enum TokenType {
     Dot,          // .
     Let,
     Ret,
+    Break,
+    Continue,
     Func,
     While,
     New,

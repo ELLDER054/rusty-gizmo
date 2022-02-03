@@ -31,7 +31,19 @@ pub struct Parser {
     pub in_function: bool,
 
     /// The parser's current function type
-    pub function_typ: String
+    pub function_typ: String,
+
+    /// Whether or not the parser is currently in a loop
+    pub in_loop: bool,
+
+    /// The parser's current loop begin
+    pub loop_begin: String,
+
+    /// The parser's current loop end
+    pub loop_end: String,
+
+    /// The number of labels created
+    pub label_num: usize
 }
 
 /// Implement functions for a "Parser"
@@ -53,7 +65,52 @@ impl Parser {
     /// Returns a recursively parsed expression node
     fn expression(&mut self, start: usize) -> Expression {
         self.pos = start;
-        return self.equality(start);
+        return self.boolean(start);
+    }
+
+    /// Parse a boolean operation
+    /// # Example
+    /// `a and b` or `a or b`
+    fn boolean(&mut self, start: usize) -> Expression {
+        self.pos = start;
+        // Parse the left hand side of the expression
+        let mut expr = self.equality(self.pos);
+
+        // Continue matching an operator with another side of the expression
+        // after it
+        while self.match_t(TokenType::And) != None
+        || self.match_t(TokenType::Or) != None {
+            let save = self.pos - 1;
+            let right = self.equality(self.pos);
+
+            // If the right side isn't found, print an error
+            if right == Expression::Non {
+                emit_error(
+                    "Expected an expression after this operator".to_string(),
+                    "help: Insert an expression after this operator",
+                    &self.tokens[self.pos - 1],
+                    ErrorType::ExpectedToken
+                );
+            }
+            let left = expr.clone();
+            expr = Expression::BinaryOperator {
+                oper:  self.tokens[save].value.clone(),
+                left:  Box::new(expr.clone()),
+                right: Box::new(right.clone())
+            };
+
+            // If the expression is semantically incorrect, print an error
+            if expr.validate() == "error" {
+                emit_error(
+                    "Mismatched types within this expression".to_string(),
+                    // TOO LONG
+                    format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str(),
+                    &self.tokens[save],
+                    ErrorType::MismatchedTypes);
+            }
+        }
+
+        return expr;
     }
 
     /// Parse an equality operation
@@ -1070,14 +1127,57 @@ impl Parser {
                 ErrorType::ExpectedToken
             );
         }
+
+        self.in_loop = true;
+        self.loop_begin = format!("{}", self.label_num);
+        self.loop_end = format!("{}", self.label_num + 1);
         let body = self.statement(self.pos);
-        return Node::While {cond: cond, body: Box::new(body)};
+        self.in_loop = false;
+        self.label_num += 2;
+        return Node::While {cond: cond, body: Box::new(body), begin: (self.label_num - 2) as i32, end: (self.label_num - 1) as i32};
     }
 
-    /// Parses a return statement
-    /// # Example
-    /// ret 5;
+    /// Parses a break or continue statement
     fn ret_statement(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Match the 'ret' keyword
+        let mut key = self.match_t(TokenType::Break);
+        if key == None {
+            key = self.match_t(TokenType::Continue);
+            if key == None {
+                self.pos = start;
+                return Node::Non;
+            }
+        }
+
+        // Match a semi-colon after the expression
+        let semi = self.match_t(TokenType::SemiColon);
+        if semi == None {
+            emit_error(
+                "Expected a semi-colon".to_string(),
+                "help: Insert a semi-colon after this expression",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        }
+
+        if !self.in_loop {
+            emit_error(
+                "Attempted to break outside of a loop".to_string(),
+                "",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        }
+
+        return Node::Pause {label: if key.unwrap() == "break" {self.loop_end.clone()} else {self.loop_begin.clone()}};
+    }
+
+    /// Parses a pause statement
+    /// # Example
+    /// break 5;
+    fn pause_statement(&mut self, start: usize) -> Node {
         self.pos = start;
 
         // Match the 'ret' keyword
@@ -1272,6 +1372,12 @@ impl Parser {
         let ret = self.ret_statement(self.pos);
         if ret != Node::Non {
             return ret;
+        }
+
+        // Check for a pause statement
+        let pause = self.pause_statement(self.pos);
+        if pause != Node::Non {
+            return pause;
         }
 
         // Check for a function declaration
