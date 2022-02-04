@@ -42,6 +42,8 @@ pub enum TokenType {
     Comma,        // ,
     Dot,          // .
     Let,
+    If,
+    Else,
     Ret,
     Break,
     Continue,

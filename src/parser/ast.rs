@@ -21,13 +21,32 @@ pub enum Node {
     },
 
     /// Return statement
+    /// # Example
+    /// ret 10;
     Ret {
         expr: Expression
     },
 
     /// Break or continue statement
+    /// # Example
+    /// break;
+    /// or
+    /// continue;
     Pause {
         label: String,
+    },
+
+    /// If statement
+    /// if "abc" == "abc" {
+    ///     write("Yay");
+    /// }
+    If {
+        cond: Expression,
+        body: Box<Node>,
+        else_body: Option<Box<Node>>,
+        begin: i32,
+        else_: i32,
+        end: i32
     },
 
     /// Assign statement

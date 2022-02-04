@@ -230,6 +230,7 @@ impl Generator {
                 },
                 Node::FuncDecl {id, typ, args, body} => self.generate_func_decl(id.clone(), typ.clone(), args.clone(), body.clone()),
                 Node::While {cond, body, begin, end} => self.generate_while_loop(cond.clone(), body.clone(), begin, end),
+                Node::If {cond, body, else_body, begin, else_, end} => self.generate_if_stmt(cond.clone(), body.clone(), else_body.clone(), begin, else_, end),
                 Node::Assign {id, expr} => self.generate_assign_stmt(id.clone(), expr.clone()),
                 Node::FuncCall {id, args} => {
                     self.generate_func_call(id.clone(), "void".to_string(), args.clone());
@@ -513,6 +514,33 @@ impl Generator {
         // again, or exit the loop
         let gen_cond2 = self.generate_expression(cond.clone(), true);
         self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond2, begin, end.clone(), end).as_str());
+    }
+    
+    /// Generates code for an if-statement
+    fn generate_if_stmt(&mut self, cond: Expression, body: Box<Node>, else_body: Option<Box<Node>>, begin: i32, else_: i32, end: i32) {
+        // Generate the condition
+        let gen_cond = self.generate_expression(cond.clone(), true);
+
+        // Jump to the if-label to start the loop
+        if else_body == None {
+            self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond, begin.clone(), end, begin.clone()).as_str());
+        } else {
+            self.ir_b.code.push_str(format!("\tbr i1 {}, label %l{}, label %l{}\nl{}:\n", gen_cond, begin.clone(), else_, begin.clone()).as_str());
+        }
+        
+        // Generate the body of the loop
+        self.generate(vec![body]);
+        self.ir_b.code.push_str(format!("\tbr label %l{}\n", end.clone()).as_str());
+
+        match else_body {
+            Some(e) => {
+                self.ir_b.code.push_str(format!("l{}:\n", else_).as_str());
+                self.generate(vec![e]);
+                self.ir_b.code.push_str(format!("\tbr label %l{}\n", end.clone()).as_str());
+            },
+            None => {}
+        }
+        self.ir_b.code.push_str(format!("l{}:\n", end).as_str());
     }
 
     /// Generates code for an assignment

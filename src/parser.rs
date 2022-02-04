@@ -33,6 +33,18 @@ pub struct Parser {
     /// The parser's current function type
     pub function_typ: String,
 
+    /// Whether or not the parser is currently in an if
+    pub in_if: bool,
+
+    /// The parser's current if begin
+    pub if_begin: String,
+
+    /// The parser's current if else
+    pub if_else: String,
+
+    /// The parser's current if end
+    pub if_end: String,
+
     /// Whether or not the parser is currently in a loop
     pub in_loop: bool,
 
@@ -386,7 +398,7 @@ impl Parser {
                 }
             } else {
                 // If the right side isn't found, print an error
-                let right = self.primary(self.pos);
+                let right = self.expression(self.pos);
                 if right == Expression::Non {
                     emit_error(
                         // TOO LONG
@@ -1101,6 +1113,46 @@ impl Parser {
 
         return Node::Block {statements: statements};
     }
+    
+    /// Parses an if-statement
+    /// # Example
+    /// if "abc" == "abc" {
+    ///     write("Yay!\n");
+    /// }
+    fn if_stmt(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        let key = self.match_t(TokenType::If);
+        if key == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        let cond = self.expression(self.pos);
+        if cond == Expression::Non {
+            emit_error(
+                "Expected a conditional expression".to_string(),
+                "help: Insert an conditional expression after this 'if' keyword",
+                &self.tokens[self.pos - 1],
+                ErrorType::ExpectedToken
+            );
+        
+        }
+        self.in_if = true;
+        let body = self.statement(self.pos);
+        self.in_if = false;
+
+        let mut else_body: Option<Box<Node>> = None;
+        let e = self.match_t(TokenType::Else);
+        if e != None {
+            else_body = Some(Box::new(self.statement(self.pos)));
+        }
+
+        let used = if else_body == None {2} else {3};
+        self.label_num += used;
+
+        return Node::If {cond: cond, body: Box::new(body), else_body: else_body, begin: (self.label_num - used) as i32, else_: (self.label_num - (used - 1)) as i32, end: (self.label_num - 1) as i32};
+    }
 
     /// Parses a while-loop
     /// # Example
@@ -1128,11 +1180,16 @@ impl Parser {
             );
         }
 
+        let save_in_loop = self.in_loop;
         self.in_loop = true;
+        let save_b = self.loop_begin.clone();
+        let save_e = self.loop_end.clone();
         self.loop_begin = format!("{}", self.label_num);
         self.loop_end = format!("{}", self.label_num + 1);
         let body = self.statement(self.pos);
-        self.in_loop = false;
+        self.loop_begin = save_b;
+        self.loop_end = save_e;
+        self.in_loop = save_in_loop;
         self.label_num += 2;
         return Node::While {cond: cond, body: Box::new(body), begin: (self.label_num - 2) as i32, end: (self.label_num - 1) as i32};
     }
@@ -1360,6 +1417,12 @@ impl Parser {
         let wh = self.while_loop(self.pos);
         if wh != Node::Non {
             return wh;
+        }
+
+        // Check for a while-loop
+        let i = self.if_stmt(self.pos);
+        if i != Node::Non {
+            return i;
         }
 
         // Check for a function call
