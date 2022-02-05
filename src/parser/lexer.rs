@@ -3,7 +3,7 @@ pub mod error;
 
 use self::token::Token;
 use self::error::ErrorType;
-use self::error::emit_error;
+use self::error::error;
 use self::token::TokenType;
 
 /// Stores information for a "Lexer"
@@ -40,9 +40,9 @@ impl Lexer {
         self.col += sight;
     }
 
-    /// Returns the next character in code
+    /// Peeks in code for an upcoming character
     fn peek(&self, sight: usize) -> char {
-        // If the next character is past the end of the input, return ' '
+        // If the character is past the end of the input, return ' '
         if self.pos + sight >= self.code.len() {
             return ' ';
         }
@@ -55,15 +55,16 @@ impl Lexer {
     fn parse_character(&mut self) -> String {
         if self.peek(0) == '\\' {
             self.advance(1);
-            return match self.peek(0) {
-                'n'  => "\\0A",
-                't'  => "\\09",
-                '\'' => "\\27",
-                '\"' => "\\22",
+            match self.peek(0) {
+                'n'  => "\n",
+                't'  => "\t",
+                '\'' => "'",
+                '"' => "\"",
                  _   => "\\"
-            }.to_string();
+            }.to_string()
+        } else {
+            self.peek(0).to_string()
         }
-        return self.peek(0).to_string();
     }
 
     /// Loops through the input and collects the tokens
@@ -83,8 +84,8 @@ impl Lexer {
             // Stores the current line
             let line: &str = lines[lineno - 1];
 
-            // Stores te current character
-            let mut c: char = self.code.chars().nth(self.pos).unwrap();
+            // Stores the current character
+            let mut c: char = self.peek(0);
 
             // Allocates a possible string/name/digit for later
             let mut string: String = String::new();
@@ -139,52 +140,61 @@ impl Lexer {
                     self.advance(1);
                     continue;
                 },
-                // For a newline, increment the line number, increment the
-                // position, and reset the column
                 '\n' => {
+                    // Increment the line number
                     lineno += 1;
+
+                    // Increment the position
                     self.advance(1);
+
+                    // Reset the column
                     self.col = 0;
                     continue;
                 },
                 '\'' => {
+                    // Skip over the '
                     self.advance(1);
+
+                    // Parse a character
                     _chr = self.parse_character();
+
+                    // Skip over the character
                     self.advance(1);
+
+                    // If the second single quote wasn't found, print an error
                     if self.peek(0) != '\'' {
                         let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
-                        emit_error(
-                            "Expected a single quote".to_string(),
-                            "help: Insert a single quote after this character",
-                            &empty_token,
-                            ErrorType::ExpectedToken
-                        );
+                        error(ErrorType::ExpectedToken, &empty_token)
+                            .note("Expected a single quote")
+                            .help("Insert a single quote after this character")
+                            .emit();
                     }
+
+                    // Skip over the second '
                     self.advance(1);
                     (&_chr, TokenType::Char)
                 },
                 '"' => {
-                    // Set c to the character after the '"'
+                    // Set c to the character after the "
                     c = self.peek(1);
 
-                    // Advance and consume the '"'
+                    // Skip over the "
                     self.advance(1);
 
                     let mut len = 0;
 
                     // Loop until the end of the string
                     while c != '"' {
-                        // When it reaches the end of the line without finding
+                        // If it reaches the end of the line without finding
                         // a second '"', give error
                         if c == '\n' || c == '\0' {
                             let empty_token = Token {typ: TokenType::Error, value: " ".to_string(), lineno: lineno, col: self.col, line: lines[lineno - 1].to_string()};
-                            emit_error(
-                                "Closing double quote was not found".to_string(),
-                                "help: Add a closing double quote to signal the end of the string",
-                                &empty_token,
-                                ErrorType::UnexpectedEOF
-                           );
+                            error(ErrorType::UnexpectedEOF, &empty_token)
+                                .note("Closing double quote was not found")
+                                .help("Add a closing double quote to signal the end of the string")
+                                .emit();
                         }
+
                         // Add the character to allocated "string" variable
                         string.push_str(self.parse_character().as_str());
 
@@ -196,12 +206,10 @@ impl Lexer {
                         len += 1;
                     }
 
-                    // Advance and consume the second '"'
+                    // Skip the second "
                     self.advance(1);
 
                     string = format!("{}.{}", len, string);
-
-                    // Return the new string token
                     (string.as_str(), TokenType::Str)
                 },
                 id if self.is_identifier_start(id) => {
@@ -219,29 +227,28 @@ impl Lexer {
 
                     // Match the identifier against all the keywords to find the appropriate token type
                     let id_type: TokenType = match name.as_str() {
-                        "let"    => TokenType::Let,
-                        "if"    => TokenType::If,
-                        "else"    => TokenType::Else,
-                        "ret"    => TokenType::Ret,
-                        "break"    => TokenType::Break,
-                        "continue"    => TokenType::Continue,
-                        "func"    => TokenType::Func,
-                        "while"  => TokenType::While,
-                        "new"    => TokenType::New,
-                        "struct" => TokenType::Struct,
-                        "not"    => TokenType::Not,
-                        "and"    => TokenType::And,
-                        "or"     => TokenType::Or,
+                        "let"            => TokenType::Let,
+                        "if"             => TokenType::If,
+                        "else"           => TokenType::Else,
+                        "ret"            => TokenType::Ret,
+                        "break"          => TokenType::Break,
+                        "continue"       => TokenType::Continue,
+                        "func"           => TokenType::Func,
+                        "while"          => TokenType::While,
+                        "new"            => TokenType::New,
+                        "struct"         => TokenType::Struct,
+                        "not"            => TokenType::Not,
+                        "and"            => TokenType::And,
+                        "or"             => TokenType::Or,
                         "true" | "false" => TokenType::Bool,
                         "int" | "string" | "char" | "bool" | "dec" => TokenType::Type,
-                        _        => TokenType::Id,
+                        _                => TokenType::Id,
                     };
-
-                    // Return the identifier token
                     (name.as_str(), id_type)
                 },
                 num if self.is_digit(num) => {
-                    // Store the type of the number (int), if the number turns
+                    // Store the type of the number (int)
+                    // If the number turns
                     // out to be a floating point number, override it
                     let mut typ: TokenType = TokenType::Int;
 
@@ -268,12 +275,10 @@ impl Lexer {
                         // If a digit is not found after the dot, print an error
                         if !self.is_digit(c) {
                             let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
-                            emit_error(
-                                "Expected number after dot".to_string(),
-                                "help: Take away the dot or insert a number after the dot",
-                                &empty_token,
-                                ErrorType::DecNotFound
-                            );
+                            error(ErrorType::DecNotFound, &empty_token)
+                                .note("Expected number after dot")
+                                .help("Take away the dot or insert a number after the dot")
+                                .emit();
                         }
 
                         // Otherwise, continue to collect digits and add to the
@@ -290,27 +295,23 @@ impl Lexer {
                             typ = TokenType::Dec;
                         } else {
                             let empty_token = Token {typ: TokenType::Error, value: "".to_string(), lineno: lineno, col: 0, line: lines[lineno - 1].to_string()};
-                            emit_error(
-                                "Unexpected dot".to_string(),
-                                "help: Take away this dot",
-                                &empty_token,
-                                ErrorType::DecTooManyDots
-                            );
+                            error(ErrorType::DecTooManyDots, &empty_token)
+                                .note("Unexpected dot")
+                                .help("Take away this dot")
+                                .emit();
                         };
                     }
                     
                     // Return the number token
                     (digit.as_str(), typ)
                 },
-                // Finding unknown characters results in an error
                 _ => {
+                    // If there is an unknown character, print an error
                     let empty_token = Token {typ: TokenType::Error, value: c.to_string(), lineno: lineno, col: begin, line: line.to_string()};
-                    emit_error(
-                        format!("Unknown character '{}'", c),
-                        "",
-                        &empty_token,
-                        ErrorType::UnknownChar
-                    );
+                    error(ErrorType::UnknownChar, &empty_token)
+                        .note(format!("Unknown character '{}'", c).as_str())
+                        .help("")
+                        .emit();
                     continue;
                 },
             };

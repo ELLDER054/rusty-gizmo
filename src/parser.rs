@@ -6,7 +6,7 @@ pub mod symbol;
 use self::lexer::token::Token;
 use self::lexer::token::TokenType;
 use self::lexer::error::ErrorType;
-use self::lexer::error::emit_error;
+use self::lexer::error::error;
 use self::ast::Node;
 use self::ast::Expression;
 use self::symbol::SymbolController;
@@ -35,15 +35,6 @@ pub struct Parser {
 
     /// Whether or not the parser is currently in an if
     pub in_if: bool,
-
-    /// The parser's current if begin
-    pub if_begin: String,
-
-    /// The parser's current if else
-    pub if_else: String,
-
-    /// The parser's current if end
-    pub if_end: String,
 
     /// Whether or not the parser is currently in a loop
     pub in_loop: bool,
@@ -97,12 +88,10 @@ impl Parser {
 
             // If the right side isn't found, print an error
             if right == Expression::Non {
-                emit_error(
-                    "Expected an expression after this operator".to_string(),
-                    "help: Insert an expression after this operator",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression after this operator")
+                    .help("Insert an expression after this operator")
+                    .emit();
             }
             let left = expr.clone();
             expr = Expression::BinaryOperator {
@@ -113,12 +102,10 @@ impl Parser {
 
             // If the expression is semantically incorrect, print an error
             if expr.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes);
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str())
+                    .emit();
             }
         }
 
@@ -142,12 +129,10 @@ impl Parser {
 
             // If the right side isn't found, print an error
             if right == Expression::Non {
-                emit_error(
-                    "Expected an expression after this operator".to_string(),
-                    "help: Insert an expression after this operator",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression after this operator")
+                    .help("Insert an expression after this operator")
+                    .emit();
             }
             let left = expr.clone();
             expr = Expression::BinaryOperator {
@@ -158,12 +143,10 @@ impl Parser {
 
             // If the expression is semantically incorrect, print an error
             if expr.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes);
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str())
+                    .emit();
             }
         }
 
@@ -189,12 +172,10 @@ impl Parser {
 
             // If the right side isn't found, print an error
             if right == Expression::Non {
-                emit_error(
-                    "Expected an expression after this operator".to_string(),
-                    "help: Insert an expression after this operator",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression after this operator")
+                    .help("Insert an expression after this operator")
+                    .emit();
             }
             let left = expr.clone();
             expr = Expression::BinaryOperator {
@@ -205,13 +186,10 @@ impl Parser {
 
             // If the expression is semantically incorrect, print an error
             if expr.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes
-                );
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.validate()).as_str())
+                    .emit();
             }
         }
 
@@ -235,12 +213,10 @@ impl Parser {
 
             // If the right side isn't found, print an error
             if right == Expression::Non {
-                emit_error(
-                    "Expected an expression after this operator".to_string(),
-                    "help: Insert an expression after this operator",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression after this operator")
+                    .help("Insert an expression after this operator")
+                    .emit();
             }
             let left = expr.clone();
             expr = Expression::BinaryOperator {
@@ -251,13 +227,10 @@ impl Parser {
 
             // If the expression is semantically incorrect, print an error
             if expr.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.clone().validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes
-                );
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left.validate(), right.clone().validate()).as_str())
+                    .emit();
             }
         }
 
@@ -281,12 +254,10 @@ impl Parser {
 
             // If the right side isn't found, print an error
             if right == Expression::Non {
-                emit_error(
-                    "Expected an expression after this operator".to_string(),
-                    "help: Insert an expression after this operator",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression after this operator")
+                    .help("Insert an expression after this operator")
+                    .emit();
             }
             let left_type = expr.clone();
             expr = Expression::BinaryOperator {
@@ -297,13 +268,10 @@ impl Parser {
 
             // If the expression is semantically incorrect, print an error
             if expr.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left_type.validate(), right.validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes
-                );
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to use '{}' with the types '{}' and '{}'", (&self.tokens[save]).value, left_type.validate(), right.validate()).as_str())
+                    .emit();
             }
         }
 
@@ -324,13 +292,10 @@ impl Parser {
 
             // If the right side isn't found, print an error
             if right == Expression::Non {
-                emit_error(
-                    "Expected an expression after this operator".to_string(),
-                    // TOO LONG
-                    "help: Take away the operator or insert an expression after this operator",
-                    &self.tokens[self.pos - 1], 
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression after this operator")
+                    .help("Insert an expression after this operator")
+                    .emit();
             }
             let oper = Expression::UnaryOperator {
                 oper: (&self.tokens[save]).value.clone(),
@@ -339,13 +304,10 @@ impl Parser {
 
             // If the expression is semantically incorrect, print an error
             if oper.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to use '{}' with the type '{}'", (&self.tokens[save]).value, right.validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes
-                );
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to use '{}' with the type '{}'", (&self.tokens[save]).value, right.validate()).as_str())
+                    .emit();
             }
             return oper;
         }
@@ -372,17 +334,13 @@ impl Parser {
                 // If the right side isn't found, print an error
                 let right = self.match_t(TokenType::Id);
                 if right == None {
-                    emit_error(
-                        // TOO LONG
-                        "Expected an expression after this operator".to_string(),
-                        "help: Insert an expression after this operator",
-                        &self.tokens[self.pos - 1],
-                        ErrorType::ExpectedToken
-                    );
+                    error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                        .note("Expected an expression after this operator")
+                        .help("Insert an expression after this operator")
+                        .emit();
                 }
 
-                // TOO LONG
-                let sym = self.symtable.find_global_struct_error(expr.clone().validate().to_string());
+                let sym = self.symtable.find_global_struct_error(expr.clone().validate().to_string(), &self.tokens[start]);
                 let mut field_num = 0;
                 for field in sym.arg_types.iter() {
                     if field.clone() == right.clone().unwrap() {
@@ -400,23 +358,18 @@ impl Parser {
                 // If the right side isn't found, print an error
                 let right = self.expression(self.pos);
                 if right == Expression::Non {
-                    emit_error(
-                        // TOO LONG
-                        "Expected an expression after this operator".to_string(),
-                        "help: Insert an expression after this operator",
-                        &self.tokens[self.pos - 1],
-                        ErrorType::ExpectedToken
-                    );
+                    error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                        .note("Expected an expression after this operator")
+                        .help("Insert an expression after this operator")
+                        .emit();
                 }
                 
                 // If the index is not an integer, print an error
                 if (&right).validate() != "int" {
-                    emit_error(
-                        "Mismatched types".to_string(),
-                        "help: This must be an integer",
-                        &self.tokens[save],
-                        ErrorType::MismatchedTypes
-                    );
+                    error(ErrorType::MismatchedTypes, &self.tokens[save])
+                        .note("Mismatched types")
+                        .help("This must be an integer")
+                        .emit();
                 }
                 self.match_t(TokenType::RightBracket);
                 expr = Expression::IndexedValue {
@@ -427,13 +380,10 @@ impl Parser {
             }
             // If the expression is semantically incorrect, print an error
             if expr.validate() == "error" {
-                emit_error(
-                    "Mismatched types within this expression".to_string(),
-                    // TOO LONG
-                    format!("Attempted to index with the type '{}'", left_type.validate()).as_str(),
-                    &self.tokens[save],
-                    ErrorType::MismatchedTypes
-                );
+                error(ErrorType::MismatchedTypes, &self.tokens[save])
+                    .note("Mismatched types within this expression")
+                    .help(format!("Attempted to index with the type '{}'", left_type.validate()).as_str())
+                    .emit();
             }
         }
 
@@ -478,14 +428,12 @@ impl Parser {
         let fc = self.func_call_no_semi(self.pos);
         if fc != Node::Non {
             if let Node::FuncCall {id, args} = fc {
-                let sym = self.symtable.find_global_func_error(id.clone());
+                let sym = self.symtable.find_global_func_error(id.clone(), &self.tokens[start]);
                 if sym.typ == "void" {
-                    emit_error(
-                        "Mismatched types".to_string(),
-                        "Cannot use a function that returns 'void' as an expression",
-                        &self.tokens[start],
-                        ErrorType::MismatchedTypes
-                    );
+                    error(ErrorType::MismatchedTypes, &self.tokens[start])
+                        .note("Mismatched types")
+                        .help("Cannot use a function that returns 'void' as an expression")
+                        .emit();
                 };
                 return Expression::FuncCall {
                     id: id,
@@ -521,12 +469,10 @@ impl Parser {
             // If the array is empty, it is impossible to infer it's type
             // TODO: Allow explicitly stating the array's type
             if values.len() == 0 {
-                emit_error(
-                    "This array does not have a type".to_string(),
-                    "help: Consider explicitly stating the array's type",
-                    &self.tokens[save],
-                    ErrorType::UndefinedArray
-                );
+                error(ErrorType::UndefinedArray, &self.tokens[save])
+                    .note("This array does not have a type")
+                    .help("Consider explicitly stating the array's type")
+                    .emit();
             }
 
             // Match a right bracket
@@ -540,12 +486,10 @@ impl Parser {
                     // If the type of the element does not match the first
                     // type, print an error
                     if value.validate() != first_typ {
-                        emit_error(
-                            "This array has mismatched types".to_string(),
-                            "",
-                            &self.tokens[save],
-                            ErrorType::MismatchedTypes
-                        );
+                        error(ErrorType::MismatchedTypes, &self.tokens[save])
+                            .note("This array has mismatched types")
+                            .help("")
+                            .emit();
                     }
                 }
                 let typ = format!("{}[]", &first_typ);
@@ -559,29 +503,24 @@ impl Parser {
         }
         let id = self.match_t(TokenType::Id);
         if id != None {
-            let sym = self.symtable.find_global_var_error(id.clone().unwrap());
-            // TOO LONG
+            let sym = self.symtable.find_global_var_error(id.clone().unwrap(), &self.tokens[self.pos - 1]);
             return Expression::Id(id.unwrap(), sym.typ.clone(), sym.gen_id.clone());
         }
         let lp = self.match_t(TokenType::LeftParen);
         if lp != None {
             let e = self.expression(self.pos);
             if e == Expression::Non {
-                emit_error(
-                    "Expected an expression".to_string(),
-                    "Expected an expression after this left parenthesis",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an expression")
+                    .help("Insert an expression after this left parenthesis")
+                    .emit();
             }
             let rp = self.match_t(TokenType::RightParen);
             if rp == None {
-                emit_error(
-                    "Expected a right parenthesis".to_string(),
-                    "Expected a right parenthesis after this expression",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a right parenthesis")
+                    .help("Insert a right parenthesis after this expression")
+                    .emit();
             }
             return e;
         }
@@ -609,12 +548,10 @@ impl Parser {
             // Match a left parenthesis
             let lp = self.match_t(TokenType::LeftParen);
             if lp == None {
-                emit_error(
-                    "Expected a left parenthesis".to_string(),
-                    "help: Insert a left parenthesis after this identifier",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a left parenthesis")
+                    .help("Insert a left parenthesis after this identifier")
+                    .emit();
             }
 
             // Create a vector to store the fields
@@ -633,19 +570,15 @@ impl Parser {
                 fields.push(expr.clone());
 
                 // Find the symbol in the symbol table
-                // TOO LONG
-                let sym = self.symtable.find_global_struct_error(id.clone().unwrap());
+                let sym = self.symtable.find_global_struct_error(id.clone().unwrap(), &self.tokens[start]);
                 
                 if sym.arg_types[field_num] != expr.validate() {
                     // If the type of the expected field is not equal to the
                     // given field, print an error
-                    emit_error(
-                        // TOO LONG
-                        "The type of this expression does not match the corresponding field".to_string(),
-                        "",
-                        &self.tokens[self.pos - 1],
-                        ErrorType::MismatchedTypes
-                    );
+                    error(ErrorType::MismatchedTypes, &self.tokens[self.pos - 1])
+                        .note("The type of this expression does not match the corresponding field")
+                        .help("")
+                        .emit();
                 }
                 field_num += 1;
 
@@ -660,12 +593,10 @@ impl Parser {
             // Match a right parenthesis
             let rp = self.match_t(TokenType::RightParen);
             if rp == None {
-                emit_error(
-                    "Expected a right parenthesis".to_string(),
-                    "help: Insert a right parenthesis after this token",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a right parenthesis")
+                    .help("Insert a right parenthesis after this token")
+                    .emit();
             }
             
             // Return the struct initialization
@@ -690,12 +621,10 @@ impl Parser {
             while self.match_t(TokenType::LeftBracket) != None {
                 let rb = self.match_t(TokenType::RightBracket);
                 if rb == None {
-                    emit_error(
-                        "Expected a right bracket".to_string(),
-                        "help: Insert a right bracket after this left bracket",
-                        &self.tokens[self.pos - 1],
-                        ErrorType::ExpectedToken
-                    );
+                    error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                        .note("Expected a right bracket")
+                        .help("Insert a right bracket after this left bracket")
+                        .emit();
                 }
                 brackets.push_str("[]");
             }
@@ -705,16 +634,17 @@ impl Parser {
         // Match an identifier
         // The identifier must also be a struct
         let typ = self.match_t(TokenType::Id);
-        if typ == None
-        || self.symtable.find_global_struct(typ.clone().unwrap()) == None {
+        if typ == None {
+            self.pos = start;
+            return None;
+        }
+        if self.symtable.find_global_struct(typ.clone().unwrap()) == None {
             // If there was not an identifier or the identifier was not a
             // struct, print an error
-            emit_error(
-                "Expected a struct type".to_string(),
-                "help: Insert a struct type after this token",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a struct type")
+                .help("Insert a struct type after this token")
+                .emit();
         }
         let mut brackets = String::new();
 
@@ -722,12 +652,10 @@ impl Parser {
         while self.match_t(TokenType::LeftBracket) != None {
             let rb = self.match_t(TokenType::RightBracket);
             if rb == None {
-                emit_error(
-                    "Expected a right bracket".to_string(),
-                    "help: Insert a right bracket after this left bracket",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a right bracket")
+                    .help("Insert a right bracket after this left bracket")
+                    .emit();
             }
             brackets.push_str("[]");
         }
@@ -752,23 +680,19 @@ impl Parser {
         // Match an identifier to follow the keyword
         let id = self.match_t(TokenType::Id);
         if id == None {
-            emit_error(
-                "Expected an identifier".to_string(),
-                "help: Insert an identifier after the 'struct' keyword",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an identifier")
+                .help("Insert an identifier after the 'struct' keyword")
+                .emit();
         }
         
         // Match a left curly brace to follow the identifier
         let lb = self.match_t(TokenType::LeftBrace);
         if lb == None {
-            emit_error(
-                "Expected a left curly brace".to_string(),
-                "help: Insert a left curly brace after this identifier",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a left curly brace")
+                .help("Insert a left curly brace after this identifier")
+                .emit();
         }
 
         // Parse a series of struct fields followed by commas. If the comma is
@@ -778,34 +702,28 @@ impl Parser {
             // Match an identifier
             let id = self.match_t(TokenType::Id);
             if id == None {
-                emit_error(
-                    "Expected an identifier".to_string(),
-                    "help: Insert an identifier after this token",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an identifier")
+                    .help("Insert an identifier after this token")
+                    .emit();
             }
 
             // Match a colon after the identifier
             let colon = self.match_t(TokenType::Colon);
             if colon == None {
-                emit_error(
-                    "Expected a colon".to_string(),
-                    "help: Insert a colon after this identifier",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a colon")
+                    .help("Insert a colon after this identifier")
+                    .emit();
             }
 
             // Match a type after the colon
             let typ = self.rec_type(self.pos);
             if typ == None {
-                emit_error(
-                    "Expected a type".to_string(),
-                    "help: Insert a type after this colon",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a type")
+                    .help("Insert a type after this colon")
+                    .emit();
             }
 
             // Push the field onto the list of fields
@@ -822,12 +740,10 @@ impl Parser {
         // Match a left curly brace to follow the identifier
         let rb = self.match_t(TokenType::RightBrace);
         if rb == None {
-            emit_error(
-                "Expected right curly brace".to_string(),
-                "help: Insert a right curly brace after this struct field",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected right curly brace")
+                .help("Insert a right curly brace after this struct field")
+                .emit();
         }
 
         // Add correct symbols
@@ -835,7 +751,6 @@ impl Parser {
         for field in fields.iter() {
             types.push(field.clone().1);
         }
-        // TOO LONG
         self.symtable.add_symbol(id.clone().unwrap(), id.clone().unwrap(), SymbolType::Struct, format!("%.{}", self.id_c), Some(types));
         
         // Return the struct node
@@ -860,23 +775,19 @@ impl Parser {
         // Match an identifier
         let id = self.match_t(TokenType::Id);
         if id == None {
-            emit_error(
-                "Expected an identifier".to_string(),
-                "help: Insert an identifier after this 'func' keyword",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an identifier")
+                .help("Insert an identifier after this 'func' keyword")
+                .emit();
         }
 
         // Match a left parenthesis
         let lp = self.match_t(TokenType::LeftParen);
         if lp == None {
-            emit_error(
-                "Expected a left parenthesis".to_string(),
-                "help: Insert a left parenthesis after this identifier",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a left parenthesis")
+                .help("Insert a left parenthesis after this identifier")
+                .emit();
         }
 
         let mut args: Vec<(String, String)> = Vec::new();
@@ -904,12 +815,10 @@ impl Parser {
         // Match a right parenthesis
         let rp = self.match_t(TokenType::RightParen);
         if rp == None {
-            emit_error(
-                "Expected a right parenthesis".to_string(),
-                "help: Insert a right parenthesis after this token",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a right parenthesis")
+                .help("Insert a right parenthesis after this token")
+                .emit();
         }
 
         // Match a colon
@@ -917,30 +826,26 @@ impl Parser {
         if self.match_t(TokenType::Colon) != None {
             typ = self.rec_type(self.pos);
             if typ == None {
-                emit_error(
-                    "Expected a type".to_string(),
-                    "help: Insert a type after this colon",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a type")
+                    .help("Insert a type after this colon")
+                    .emit();
             }
         }
 
         if self.in_function {
-            emit_error(
-                "Attempted to nest functions".to_string(),
-                "",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Attempted to nest functions")
+                .help("")
+                .emit();
         }
 
         self.in_function = true;
         self.function_typ = typ.clone().unwrap();
+        self.symtable.add_symbol(id.clone().unwrap(), typ.clone().unwrap(), SymbolType::Func, id.clone().unwrap(), Some(arg_types));
         let body = self.block_statement(self.pos, arg_symbols);
         self.in_function = false;
 
-        self.symtable.add_symbol(id.clone().unwrap(), typ.clone().unwrap(), SymbolType::Func, id.clone().unwrap(), Some(arg_types));
         return Node::FuncDecl {id: id.unwrap(), typ: typ.unwrap(), args: args, body: Box::new(body)};
     }
 
@@ -985,16 +890,14 @@ impl Parser {
         // Match a right parenthesis to follow the arguments
         let rp = self.match_t(TokenType::RightParen);
         if rp == None {
-            emit_error(
-                "Expected a right parenthesis".to_string(),
-                "help: Insert a right parenthesis after this token",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a right parenthesis")
+                .help("Insert a right parenthesis after this token")
+                .emit();
         }
         match id.clone().unwrap().as_str() {
             "write" => {},
-            name => {self.symtable.find_global_func_error(name.to_string());}
+            name => {self.symtable.find_global_func_error(name.to_string(), &self.tokens[start]);}
         };
         return Node::FuncCall {id: id.unwrap(), args: args};
     }
@@ -1011,12 +914,10 @@ impl Parser {
         // Match a semi-colon after the right parenthesis
         let semi = self.match_t(TokenType::SemiColon);
         if semi == None {
-            emit_error(
-                "Expected semi-colon".to_string(),
-                "help: Insert a semi-colon after this parenthesis",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected semi-colon")
+                .help("Insert a semi-colon after this parenthesis")
+                .emit();
         }
 
         return fc;
@@ -1038,44 +939,36 @@ impl Parser {
         // Match an equals sign after the
         let eq = self.match_t(TokenType::Equal);
         if eq == None {
-            emit_error(
-                "Expected an equals sign".to_string(),
-                "help: Insert an equals sign after this identifier",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an equals sign")
+                .help("Insert an equals sign after this identifier")
+                .emit();
         }
 
         // Match an expression for the value of the let statement
         let expr: Expression = self.expression(self.pos);
         if expr == Expression::Non {
-            emit_error(
-                "Expected an expression".to_string(),
-                "help: Take away the equals sign or insert an expression after this equals sign",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an expression")
+                .help("Take away the equals sign or insert an expression after this equals sign")
+                .emit();
         }
         
         // If the type of the expression has a type-checker error, print an error
         if expr.clone().validate() == "error" {
-            emit_error(
-                "This type does not match the type of the expression".to_string(),
-                "",
-                &self.tokens[self.pos - 1],
-                ErrorType::MismatchedTypes
-            );
+            error(ErrorType::MismatchedTypes, &self.tokens[self.pos - 1])
+                .note("This type does not match the type of the expression")
+                .help("")
+                .emit();
         }
 
         // Match an expression for the value of the let statement
         let semi = self.match_t(TokenType::SemiColon);
         if semi == None {
-            emit_error(
-                "Expected a semi-colon".to_string(),
-                "help: Insert a semi-colon after this expression",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a semi-colon")
+                .help("Insert a semi-colon after this expression")
+                .emit();
         }
 
         return Node::Assign {id: id, expr: expr};
@@ -1130,12 +1023,10 @@ impl Parser {
 
         let cond = self.expression(self.pos);
         if cond == Expression::Non {
-            emit_error(
-                "Expected a conditional expression".to_string(),
-                "help: Insert an conditional expression after this 'if' keyword",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a conditional expression")
+                .help("Insert an conditional expression after this 'if' keyword")
+                .emit();
         
         }
         self.in_if = true;
@@ -1172,12 +1063,10 @@ impl Parser {
 
         let cond = self.expression(self.pos);
         if cond == Expression::Non {
-            emit_error(
-                "Expected a conditional expression".to_string(),
-                "help: Insert an conditional expression after this 'while' keyword",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a conditional expression")
+                .help("Insert an conditional expression after this 'while' keyword")
+                .emit();
         }
 
         let save_in_loop = self.in_loop;
@@ -1211,21 +1100,17 @@ impl Parser {
         // Match a semi-colon after the expression
         let semi = self.match_t(TokenType::SemiColon);
         if semi == None {
-            emit_error(
-                "Expected a semi-colon".to_string(),
-                "help: Insert a semi-colon after this expression",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a semi-colon")
+                .help("Insert a semi-colon after this expression")
+                .emit();
         }
 
         if !self.in_loop {
-            emit_error(
-                "Attempted to break outside of a loop".to_string(),
-                "",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Attempted to break outside of a loop")
+                .help("")
+                .emit();
         }
 
         return Node::Pause {label: if key.unwrap() == "break" {self.loop_end.clone()} else {self.loop_begin.clone()}};
@@ -1247,41 +1132,33 @@ impl Parser {
         // Match an expression
         let expr = self.expression(self.pos);
         if expr == Expression::Non {
-            emit_error(
-                "Expected an expression".to_string(),
-                "help: Insert an expression after this 'ret' keyword",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an expression")
+                .help("Insert an expression after this 'ret' keyword")
+                .emit();
         }
 
         // Match a semi-colon after the expression
         let semi = self.match_t(TokenType::SemiColon);
         if semi == None {
-            emit_error(
-                "Expected a semi-colon".to_string(),
-                "help: Insert a semi-colon after this expression",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a semi-colon")
+                .help("Insert a semi-colon after this expression")
+                .emit();
         }
 
         if !self.in_function {
-            emit_error(
-                "Attempted to return from the main scope".to_string(),
-                "",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Attempted to return from the main scope")
+                .help("")
+                .emit();
         }
 
         if self.function_typ.clone() != expr.clone().validate() {
-            emit_error(
-                "Attempted to return with the incorrect type".to_string(),
-                format!("help: Expected {}, found {}", self.function_typ, expr.clone().validate()).as_str(),
-                &self.tokens[self.pos - 1],
-                ErrorType::MismatchedTypes
-            );
+            error(ErrorType::MismatchedTypes, &self.tokens[self.pos - 1])
+                .note("Attempted to return with the incorrect type")
+                .help(format!("Expected {}, found {}", self.function_typ, expr.clone().validate()).as_str())
+                .emit();
         }
 
         return Node::Ret {expr: expr};
@@ -1305,12 +1182,10 @@ impl Parser {
         // Match an identifier after the 'let' keyword
         let id = self.match_t(TokenType::Id);
         if id == None {
-            emit_error(
-                "Expected an identifier".to_string(),
-                "help: Insert an identifier after this 'let' keyword",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an identifier")
+                .help("Insert an identifier after this 'let' keyword")
+                .emit();
         }
 
         // Match an equals sign after the identifer
@@ -1321,23 +1196,19 @@ impl Parser {
             // If we don't find an equals sign, look for a colon
             eq = self.match_t(TokenType::Colon);
             if eq == None {
-                emit_error(
-                    "Expected an equals sign or a colon".to_string(),
-                    "help: Insert an equals sign or a colon after this identifier",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an equals sign or a colon")
+                    .help("Insert an equals sign or a colon after this identifier")
+                    .emit();
             }
 
             // Match a type after the colon
             let typ = self.rec_type(self.pos);
             if typ == None {
-                emit_error(
-                    "Expected a type".to_string(),
-                    "help: Insert a type after this colon",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected a type")
+                    .help("Insert a type after this colon")
+                    .emit();
             }
             check_type = true;
             var_typ = typ.unwrap();
@@ -1345,57 +1216,47 @@ impl Parser {
             // Once we find a type, look again for an equals sign
             eq = self.match_t(TokenType::Equal);
             if eq == None {
-                emit_error(
-                    "Expected an equals sign".to_string(),
-                    "help: Insert an equals sign after this type",
-                    &self.tokens[self.pos - 1],
-                    ErrorType::ExpectedToken
-                );
+                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                    .note("Expected an equals sign")
+                    .help("Insert an equals sign after this type")
+                    .emit();
             }
         }
 
         // Match an expression for the value of the let statement
         let expr: Expression = self.expression(self.pos);
         if expr == Expression::Non {
-            emit_error(
-                "Expected an expression".to_string(),
-                "help: Insert an expression after this equals sign",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected an expression")
+                .help("Insert an expression after this equals sign")
+                .emit();
         }
         
         // If the type of the expression is semantically incorrect, print an
         // error
         if expr.validate() == "error" {
-            emit_error(
-                "This type does not match the type of the expression".to_string(),
-                "",
-                &self.tokens[self.pos - 1],
-                ErrorType::MismatchedTypes
-            );
+            error(ErrorType::MismatchedTypes, &self.tokens[self.pos - 1])
+                .note("This type does not match the type of the expression")
+                .help("")
+                .emit();
         }
 
         // If the type of the expression doesn't match the type given by
         // programmer, print error
         if check_type == true && var_typ.clone() != expr.validate() {
-            emit_error(
-                "The type of the variable and the type of the expression do not match".to_string(),
-                format!("help: Change this to {}", expr.validate()).as_str(),
-                &self.tokens[start + 3],
-                ErrorType::MismatchedTypes
-            );
+            error(ErrorType::MismatchedTypes, &self.tokens[start + 3])
+                .note("The type of the variable and the type of the expression do not match")
+                .help(format!("Change this to {}", expr.validate()).as_str())
+                .emit();
         }
 
         // Match a semi-colon after the expression
         let semi = self.match_t(TokenType::SemiColon);
         if semi == None {
-            emit_error(
-                "Expected a semi-colon".to_string(),
-                "help: Insert a semi-colon after this expression",
-                &self.tokens[self.pos - 1],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a semi-colon")
+                .help("Insert a semi-colon after this expression")
+                .emit();
         }
 
         self.symtable.add_symbol(id.clone().unwrap(), expr.validate().to_string(), SymbolType::Var, format!("%.{}", self.id_c), None);
@@ -1486,12 +1347,10 @@ impl Parser {
                 nodes.push(Box::new(stmt));
                 continue;
             }
-            emit_error(
-                "Unexpected token or EOF".to_string(),
-                "help: Failed to parse this statement",
-                &self.tokens[self.pos],
-                ErrorType::ExpectedToken
-            );
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos])
+                .note("Unexpected token or EOF")
+                .help("Failed to parse this statement")
+                .emit();
             break;
         }
         nodes

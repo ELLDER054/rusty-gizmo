@@ -1,3 +1,7 @@
+use super::lexer::error::error;
+use super::lexer::error::ErrorType;
+use super::lexer::token::Token;
+
 /// An enum to store each kind of symbol
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum SymbolType {
@@ -90,13 +94,20 @@ impl SymbolController {
     /// Adds a scope to the symbol table
     pub fn add_scope(&mut self) {
         let new = Scope {parent: Some(Box::new(self.current.clone())), children: Vec::new(), var_symbols: Vec::new(), func_symbols: Vec::new(), struct_symbols: Vec::new()};
+
+        // Make the new scope the current scopes child
         self.current.children.push(new.clone());
+
+        // Set the current to the new scope
         self.current = new.clone();
     }
 
     /// Pops a scope from the symbol table
     pub fn pop_scope(&mut self) {
+        // Set the current to the parent of the current
         self.current = *self.current.parent.as_ref().unwrap().clone();
+
+        // Pop the scope from the children
         self.current.children.pop();
     }
 
@@ -107,7 +118,6 @@ impl SymbolController {
         match symtyp {
             SymbolType::Var => {
                 for sym in self.current.var_symbols.iter() {
-                    // If the symbol matches, return the symbol
                     if sym.id == id {
                         return true;
                     }
@@ -115,7 +125,6 @@ impl SymbolController {
             },
             SymbolType::Func => {
                 for sym in self.current.func_symbols.iter() {
-                    // If the symbol matches, return the symbol
                     if sym.id == id {
                         return true;
                     }
@@ -123,7 +132,6 @@ impl SymbolController {
             },
             SymbolType::Struct => {
                 for sym in self.current.struct_symbols.iter() {
-                    // If the symbol matches, return the symbol
                     if sym.id == id {
                         return true;
                     }
@@ -131,7 +139,7 @@ impl SymbolController {
             },
         };
 
-        // The symbol wasn't found, return None
+        // The symbol wasn't found, return false
         return false;
     }
 
@@ -196,12 +204,15 @@ impl SymbolController {
     }
 
     /// Finds a variable identifier in the global scope
-    /// Returns None if it doesn't exist
-    pub fn find_global_var_error(&self, id: String) -> VarSymbol {
+    /// Prints an error if it doesn't exist
+    pub fn find_global_var_error(&self, id: String, token: &Token) -> VarSymbol {
         let sym = self.find_global_var(id.clone());
         if sym == None {
-            // The symbol wasn't found, print an error
-            eprintln!("Identifier '{}' not found", id);
+            // If the symbol isn't found, print an error
+            error(ErrorType::UndefinedSymbol, token)
+                .note(format!("Undefined symbol '{}'", id).as_str())
+                .help("The identifier could be spelled incorrectly")
+                .emit();
             std::process::exit(1);
         } else {
             return sym.unwrap();
@@ -209,12 +220,15 @@ impl SymbolController {
     }
 
     /// Finds a function identifier in the global scope
-    /// Returns None if it doesn't exist
-    pub fn find_global_func_error(&self, id: String) -> FuncSymbol {
+    /// Prints an error if it doesn't exist
+    pub fn find_global_func_error(&self, id: String, token: &Token) -> FuncSymbol {
         let sym = self.find_global_func(id.clone());
         if sym == None {
-            // The symbol wasn't found, print an error
-            eprintln!("Identifier '{}' not found", id);
+            // If the symbol isn't found, print an error
+            error(ErrorType::UndefinedSymbol, token)
+                .note(format!("Undefined symbol '{}'", id).as_str())
+                .help("The identifier could be spelled incorrectly")
+                .emit();
             std::process::exit(1);
         } else {
             return sym.unwrap();
@@ -222,12 +236,15 @@ impl SymbolController {
     }
 
     /// Finds a struct symbol in the global scope
-    /// Returns None if it doesn't exist
-    pub fn find_global_struct_error(&self, id: String) -> StructSymbol {
+    /// Prints an error if it doesn't exist
+    pub fn find_global_struct_error(&self, id: String, token: &Token) -> StructSymbol {
         let sym = self.find_global_struct(id.clone());
         if sym == None {
-            // The symbol wasn't found, print an error
-            eprintln!("Identifier '{}' not found", id);
+            // If the symbol isn't found, print an error
+            error(ErrorType::UndefinedSymbol, token)
+                .note(format!("Undefined symbol '{}'", id).as_str())
+                .help("The identifier could be spelled incorrectly")
+                .emit();
             std::process::exit(1);
         } else {
             return sym.unwrap();

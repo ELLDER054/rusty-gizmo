@@ -13,11 +13,10 @@ use std::io::Write;
 use std::process::Command;
 
 fn main() {
-    let mut file_name:     String = String::from("a.ll");
-    let mut out_file_name: String = String::from("a.out");
-    let mut out_ir_name: String = String::from("a.ll");
-    let mut has_file:      bool   = false;
-    let mut emit_llvm:     bool   = false;
+    let mut file_name:      String = String::new();
+    let mut out_file_name:  String = String::from("a.out");
+    let mut out_ir_name:    String = String::from("a.ll");
+    let mut emit_llvm:      bool   = false;
 
     // Collect the command line arguments into a vector
     let args: Vec<String> = env::args().collect();
@@ -28,29 +27,28 @@ fn main() {
         return;
     }
 
+    // Parse the arguments
     let mut arg_num = 1;
     while arg_num < args.len() {
         if !args[arg_num].starts_with('-') {
+            // An argument with no '-' is a file
             file_name = args[arg_num].clone();
-            if has_file == true {
-                eprintln!("Found multiple file names. Using the most recent");
-            } else {
-                has_file = true;
-            }
             arg_num += 1;
         } else if args[arg_num] == "-o" {
+            // An output file
             arg_num += 1;
             out_file_name = args[arg_num].clone();
             out_ir_name = args[arg_num].clone();
             arg_num += 1;
         } else if args[arg_num] == "-emit-llvm" {
+            // Whether or not to emit llvm
             arg_num += 1;
             emit_llvm = true;
         }
     }
 
     // Open the input file
-    let file: String = fs::read_to_string(file_name.clone()).unwrap();
+    let file = fs::read_to_string(file_name).unwrap();
 
     // Compile the input file and store the llvm ir in 'output'
     let output = compile(file);
@@ -68,6 +66,7 @@ fn main() {
         // Call 'llc' on the created file
         Command::new("llc").args(&["a.ll", "--relocation-model=pic", "-filetype=obj"]).output().expect("Failed to call llc");
         Command::new("rm").arg("a.ll").output().expect("Failed to call rm1");
+        // Call 'gcc' on 'a.o'
         Command::new("gcc").args(&["a.o", "-o", out_file_name.as_str()]).output().expect("Failed to call gcc");
         Command::new("rm").arg("a.o").output().expect("Failed to rm2");
     }
@@ -81,9 +80,9 @@ fn compile(code: String) -> String {
     // Lex the input
     let tokens: Vec<Token> = lexer.lex();
 
-    // Create a parser and a symbol table
+    // Create a symbol-table and a parser
     let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), var_symbols: Vec::new(), func_symbols: Vec::new(), struct_symbols: Vec::new()}};
-    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0, in_function: false, function_typ: "void".to_string(), label_num: 0, in_loop: false, loop_begin: String::new(), loop_end: String::new(), in_if: false, if_begin: String::new(), if_else: String::new(), if_end: String::new()};
+    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0, in_function: false, function_typ: "void".to_string(), label_num: 0, in_loop: false, loop_begin: String::new(), loop_end: String::new(), in_if: false};
 
     // Parse the tokens
     let ast = parser.parse();

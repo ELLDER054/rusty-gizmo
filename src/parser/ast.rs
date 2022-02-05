@@ -221,35 +221,26 @@ fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expression>, right: &'b Box<
             // After matching the operator, match the left side
             "int" => match (*right).validate() {
                 // Once the left side is known, match the right side
-                "int" => "int",
-                "char" => "int",
+                "int" | "char" => "int",
                 _ => "error",
             },
             "dec" => match (*right).validate() {
                 "dec" => "dec",
                 _ => "error",
             },
-            "string" => match (*right).validate() {
-                "string" => "string",
-                "char" => "string",
-                _ => "error",
-            },
             "char" => match (*right).validate() {
-                "int" => "char",
-                "char" => "char",
+                "int" | "char" => "char",
                 _ => "error"
             },
             _ => "error",
         },
         "-" | "*" => match (*left).validate() {
             "int" => match (*right).validate() {
-                "int" => "int",
-                "char" => "int",
+                "int" | "char" => "int",
                 _ => "error",
             },
             "char" => match(*right).validate() {
-                "int" => "char",
-                "char" => "char",
+                "int" | "char" => "char",
                 _ => "error"
             },
             "dec" => match (*right).validate() {

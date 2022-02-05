@@ -10,6 +10,7 @@ fn type_of(typ: String) -> String {
         "bool"   => "i1",
         "char"   => "i8",
         "string" => "i8*",
+        "void" => "void",
         arr if arr.ends_with(']') => "%.Arr",
         _ => struct_type.as_str()
     }.to_string()
@@ -328,7 +329,11 @@ impl Generator {
                 }
             }
             Expression::FuncCall {id, typ, args} => {
-                self.generate_func_call(id, type_of(typ), args)
+                if typ.as_str() == "void" {
+                    self.generate_func_call(id, "void".to_string(), args)
+                } else {
+                    self.generate_func_call(id, type_of(typ), args)
+                }
             },
             Expression::Array {values, ..} => {
                 // If %.Arr isn't already declared, declare it
@@ -484,13 +489,33 @@ impl Generator {
             arg_num += 1;
         }
 
-        self.ir_b.code = format!("define {} @{}({}) {{\nentry:\n", type_of(typ), id, arg_code);
+        if typ.clone() == "void" {
+            self.ir_b.code = format!("define void @{}({}) {{\nentry:\n", id, arg_code);
+        } else {
+            self.ir_b.code = format!("define {} @{}({}) {{\nentry:\n", type_of(typ.clone()), id, arg_code);
+        }
         
         // Tell the ir builder to enter a function
         self.ir_b.enter_function();
 
         // Generate the body of the function
         self.generate(vec![body]);
+
+        let mut _alloca: String = String::new();
+        let base_type = match typ.as_str() { 
+            "int"    => "0",
+            "dec"    => "0.0",
+            "char"   => "32",
+            "bool"   => "false",
+            "string" => {
+                _alloca = self.ir_b.create_alloca("i8".to_string(), None);
+                self.ir_b.create_store("32".to_string(), _alloca.clone(), "i8".to_string());
+                &_alloca
+            },
+            _ => ""
+        };
+
+        self.ir_b.code.push_str(format!("\tret {} {}\n", type_of(typ.clone()), base_type).as_str());
 
         // Tell the ir builder to exit a function
         self.ir_b.exit_function();
@@ -531,6 +556,7 @@ impl Generator {
         // Generate the body of the loop
         self.generate(vec![body]);
         self.ir_b.code.push_str(format!("\tbr label %l{}\n", end.clone()).as_str());
+        self.ir_b.ssa_num += 1;
 
         match else_body {
             Some(e) => {
@@ -656,7 +682,11 @@ impl Generator {
             },
             _ => {
                 // Generate the function call
-                self.ir_b.code.push_str(format!("\t%{} = call {} @{}({})\n", self.ir_b.ssa_num, typ.clone(), id.clone(), arg_values.clone()).as_str());
+                if typ.clone() == "void" {
+                    self.ir_b.code.push_str(format!("\tcall void @{}({})\n", id.clone(), arg_values.clone()).as_str());
+                } else {
+                    self.ir_b.code.push_str(format!("\t%{} = call {} @{}({})\n", self.ir_b.ssa_num, typ.clone(), id.clone(), arg_values.clone()).as_str());
+                }
                 self.ir_b.ssa_num += 1;
             }
         };
