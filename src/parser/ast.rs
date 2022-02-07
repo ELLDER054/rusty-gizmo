@@ -33,7 +33,7 @@ pub enum Node {
     /// or
     /// continue;
     Pause {
-        label: String,
+        label: usize,
     },
 
     /// If statement
@@ -89,8 +89,8 @@ pub enum Node {
     While {
         cond: Expression,
         body: Box<Node>,
-        begin: i32,
-        end: i32
+        begin: usize,
+        end: usize
     },
 
     Non,

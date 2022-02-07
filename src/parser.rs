@@ -40,10 +40,10 @@ pub struct Parser {
     pub in_loop: bool,
 
     /// The parser's current loop begin
-    pub loop_begin: String,
+    pub loop_begin: usize,
 
     /// The parser's current loop end
-    pub loop_end: String,
+    pub loop_end: usize,
 
     /// The number of labels created
     pub label_num: usize
@@ -1022,7 +1022,7 @@ impl Parser {
         }
 
         let cond = self.expression(self.pos);
-        if cond == Expression::Non {
+        if cond == Expression::Non || cond.validate() != "bool" {
             error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
                 .note("Expected a conditional expression")
                 .help("Insert an conditional expression after this 'if' keyword")
@@ -1062,7 +1062,7 @@ impl Parser {
         }
 
         let cond = self.expression(self.pos);
-        if cond == Expression::Non {
+        if cond == Expression::Non || cond.validate() != "bool" {
             error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
                 .note("Expected a conditional expression")
                 .help("Insert an conditional expression after this 'while' keyword")
@@ -1071,16 +1071,20 @@ impl Parser {
 
         let save_in_loop = self.in_loop;
         self.in_loop = true;
-        let save_b = self.loop_begin.clone();
-        let save_e = self.loop_end.clone();
-        self.loop_begin = format!("{}", self.label_num);
-        self.loop_end = format!("{}", self.label_num + 1);
+        let save_b = self.loop_begin;
+        let save_e = self.loop_end;
+        self.loop_begin = self.label_num;
+        let result_begin = self.label_num;
+        self.loop_end = self.label_num + 1;
+        let result_end = self.label_num + 1;
+        self.label_num += 2;
         let body = self.statement(self.pos);
+        println!("{}", self.loop_begin.clone());
         self.loop_begin = save_b;
         self.loop_end = save_e;
         self.in_loop = save_in_loop;
-        self.label_num += 2;
-        return Node::While {cond: cond, body: Box::new(body), begin: (self.label_num - 2) as i32, end: (self.label_num - 1) as i32};
+
+        return Node::While {cond: cond, body: Box::new(body), begin: result_begin, end: result_end};
     }
 
     /// Parses a break or continue statement
@@ -1113,7 +1117,7 @@ impl Parser {
                 .emit();
         }
 
-        return Node::Pause {label: if key.unwrap() == "break" {self.loop_end.clone()} else {self.loop_begin.clone()}};
+        return Node::Pause {label: if key.unwrap() == "break" {self.loop_end} else {self.loop_begin}};
     }
 
     /// Parses a pause statement

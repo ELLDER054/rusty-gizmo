@@ -462,6 +462,7 @@ impl Generator {
     fn generate_ret_stmt(&mut self, expr: Expression) {
         let gen_expr = self.generate_expression(expr.clone(), true);
         self.ir_b.code.push_str(format!("\tret {} {}\n", type_of(expr.validate().to_string()), gen_expr).as_str());
+        self.ir_b.ssa_num += 1;
     }
 
     /// Generates code for a function declaration
@@ -525,7 +526,7 @@ impl Generator {
     }
 
     /// Generates code for a while-loop
-    fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>, begin: i32, end: i32) {
+    fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>, begin: usize, end: usize) {
         // Generate the condition
         let gen_cond = self.generate_expression(cond.clone(), true);
 
@@ -556,7 +557,6 @@ impl Generator {
         // Generate the body of the loop
         self.generate(vec![body]);
         self.ir_b.code.push_str(format!("\tbr label %l{}\n", end.clone()).as_str());
-        self.ir_b.ssa_num += 1;
 
         match else_body {
             Some(e) => {
