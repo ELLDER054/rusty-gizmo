@@ -340,9 +340,17 @@ impl Parser {
                         .emit();
                 }
 
-                let sym = self.symtable.find_global_struct_error(expr.clone().validate().to_string(), &self.tokens[start]);
+                let sym = self.symtable.find_global_struct(expr.clone().validate().to_string());
+                if sym == None {
+                    error(ErrorType::MismatchedTypes, &self.tokens[self.pos - 1])
+                        .note(format!("'{}' is not a known struct", expr.clone().validate()).as_str())
+                        .help("The identifier could be spelled incorrectly")
+                        .note("Could have attempted to access a field from a non-struct type")
+                        .emit();
+                }
+
                 let mut field_num = 0;
-                for field in sym.arg_types.iter() {
+                for field in sym.unwrap().arg_types.iter() {
                     if field.clone() == right.clone().unwrap() {
                         expr = Expression::StructDot {
                             id: Box::new(expr.clone()),
@@ -366,11 +374,18 @@ impl Parser {
                 
                 // If the index is not an integer, print an error
                 if (&right).validate() != "int" {
-                    error(ErrorType::MismatchedTypes, &self.tokens[save])
-                        .note("Mismatched types")
+                    error(ErrorType::MismatchedTypes, &self.tokens[save + 1])
                         .help("This must be an integer")
                         .emit();
                 }
+                
+                if (expr.clone().validate() != "string")
+                || (!expr.clone().validate().ends_with(']')) {
+                    error(ErrorType::MismatchedTypes, &self.tokens[save + 1])
+                        .help("Attempted to index a type that does not permit indexing")
+                        .emit();
+                }
+
                 self.match_t(TokenType::RightBracket);
                 expr = Expression::IndexedValue {
                     src: Box::new(expr.clone()),
