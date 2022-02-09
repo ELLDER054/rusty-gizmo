@@ -87,7 +87,7 @@ impl SymbolController {
         match symtyp.clone() {
             SymbolType::Var    => self.current.var_symbols.push(VarSymbol {id: id, typ: typ, gen_id: gen_id}),
             SymbolType::Func   => self.current.func_symbols.push(FuncSymbol {id: id, typ: typ, gen_id: gen_id, arg_types: arg_types.unwrap_or(Vec::new())}),
-            SymbolType::Struct => self.current.func_symbols.push(FuncSymbol {id: id, typ: typ, gen_id: gen_id, arg_types: arg_types.unwrap_or(Vec::new())}),
+            SymbolType::Struct => self.current.struct_symbols.push(StructSymbol {id: id, gen_id: gen_id, arg_types: arg_types.unwrap_or(Vec::new())}),
         }
     }
 
@@ -209,9 +209,18 @@ impl SymbolController {
         let sym = self.find_global_var(id.clone());
         if sym == None {
             // If the symbol isn't found, print an error
+            let mut cur_var_ids: Vec<String> = Vec::new();
+            for symbol in self.current.var_symbols.clone() {
+                cur_var_ids.push(symbol.id.clone());
+            }
+            let helper = if autoc(id.clone(), cur_var_ids.clone()) == id.clone() {
+                "Perhaps you spelled this identifier wrong".to_string()
+            } else {
+                format!("Perhaps you meant '{}'", autoc(id.clone(), cur_var_ids))
+            };
             error(ErrorType::UndefinedSymbol, token)
                 .note(format!("Undefined symbol '{}'", id).as_str())
-                .help("The identifier could be spelled incorrectly")
+                .help(helper.as_str())
                 .emit();
             std::process::exit(1);
         } else {
@@ -225,9 +234,18 @@ impl SymbolController {
         let sym = self.find_global_func(id.clone());
         if sym == None {
             // If the symbol isn't found, print an error
+            let mut cur_func_ids: Vec<String> = Vec::new();
+            for symbol in self.current.func_symbols.clone() {
+                cur_func_ids.push(symbol.id.clone());
+            }
+            let helper = if autoc(id.clone(), cur_func_ids.clone()) == id.clone() {
+                "Perhaps you spelled this identifier wrong".to_string()
+            } else {
+                format!("Perhaps you meant '{}'", autoc(id.clone(), cur_func_ids))
+            };
             error(ErrorType::UndefinedSymbol, token)
                 .note(format!("Undefined symbol '{}'", id).as_str())
-                .help("The identifier could be spelled incorrectly")
+                .help(helper.as_str())
                 .emit();
             std::process::exit(1);
         } else {
@@ -241,13 +259,48 @@ impl SymbolController {
         let sym = self.find_global_struct(id.clone());
         if sym == None {
             // If the symbol isn't found, print an error
+            let mut cur_struct_ids: Vec<String> = Vec::new();
+            for symbol in self.current.struct_symbols.clone() {
+                cur_struct_ids.push(symbol.id.clone());
+            }
+            let helper = if autoc(id.clone(), cur_struct_ids.clone()) == id.clone() {
+                "Perhaps you spelled this identifier wrong".to_string()
+            } else {
+                format!("Perhaps you meant '{}'", autoc(id.clone(), cur_struct_ids))
+            };
             error(ErrorType::UndefinedSymbol, token)
-                .note(format!("Undefined symbol '{}'", id).as_str())
-                .help("The identifier could be spelled incorrectly")
+                .note(format!("'{}' is undefined", id).as_str())
+                .help(helper.as_str())
                 .emit();
             std::process::exit(1);
         } else {
             return sym.unwrap();
         }
     }
+}
+
+fn similarity(word: String, word2: String) -> f32 {
+    let mut similar: Vec<char> = Vec::new();
+    for c in word.chars() {
+        if word2.contains(c) {
+            similar.push(c);
+        }
+    }
+
+    return similar.len() as f32 / std::cmp::max(word.len(), word2.len()) as f32;
+}
+
+fn autoc(word: String, names: Vec<String>) -> String {
+    let mut max_sim = 0.0;
+    let mut most_sim = word.clone();
+
+    for name in names.iter() {
+        let sim = similarity(name.clone(), word.clone());
+        if sim > max_sim {
+            max_sim = sim;
+            most_sim = name.clone();
+        }
+    }
+
+    return most_sim;
 }

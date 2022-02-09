@@ -36,6 +36,12 @@ pub enum Node {
         label: usize,
     },
 
+    /// Use statement
+    /// # Example
+    /// use "file2.gizmo";
+    Use {
+    },
+
     /// If statement
     /// if "abc" == "abc" {
     ///     write("Yay");

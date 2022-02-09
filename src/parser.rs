@@ -3,6 +3,8 @@ mod ast;
 pub mod generator;
 pub mod symbol;
 
+use std::fs;
+use self::lexer::Lexer;
 use self::lexer::token::Token;
 use self::lexer::token::TokenType;
 use self::lexer::error::ErrorType;
@@ -380,7 +382,7 @@ impl Parser {
                 }
                 
                 if (expr.clone().validate() != "string")
-                || (!expr.clone().validate().ends_with(']')) {
+                && (!expr.clone().validate().ends_with(']')) {
                     error(ErrorType::MismatchedTypes, &self.tokens[save + 1])
                         .help("Attempted to index a type that does not permit indexing")
                         .emit();
@@ -767,6 +769,7 @@ impl Parser {
             types.push(field.clone().1);
         }
         self.symtable.add_symbol(id.clone().unwrap(), id.clone().unwrap(), SymbolType::Struct, format!("%.{}", self.id_c), Some(types));
+        println!("{:?}", self.symtable.current.func_symbols);
         
         // Return the struct node
         return Node::Struct {id: id.unwrap(), fields: fields};
@@ -1094,7 +1097,6 @@ impl Parser {
         let result_end = self.label_num + 1;
         self.label_num += 2;
         let body = self.statement(self.pos);
-        println!("{}", self.loop_begin.clone());
         self.loop_begin = save_b;
         self.loop_end = save_e;
         self.in_loop = save_in_loop;
@@ -1283,6 +1285,54 @@ impl Parser {
         return Node::Let {id: id.unwrap(), expr: expr, gen_id: format!("%.{}", self.id_c - 1)};
     }
 
+    fn use_statement(&mut self, start: usize) -> Node {
+        self.pos = start;
+
+        // Check for the 'use' keyword
+        let key = self.match_t(TokenType::Use);
+        if key == None {
+            self.pos = start;
+            return Node::Non;
+        }
+
+        let file = self.match_t(TokenType::Str);
+        if file == None {
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a string")
+                .help("Insert a string after this expression")
+                .emit();
+        }
+
+        let semi = self.match_t(TokenType::SemiColon);
+        if semi == None {
+            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
+                .note("Expected a semi-colon")
+                .help("Insert a semi-colon after this expression")
+                .emit();
+        }
+
+        let mut file_content = String::new();
+        for (i, c) in file.clone().unwrap().chars().enumerate() {
+            if c == '.' {
+                let file_name = file.clone().unwrap()[i + 1..file.clone().unwrap().len()].to_string();
+                file_content = fs::read_to_string(file_name).unwrap_or("".to_string());
+                break;
+            }
+        }
+
+        let mut lexer = Lexer {pos: 0, col: 0, code: file_content};
+        let tokens = lexer.lex();
+        let mut i = 0;
+        let mut tmp_pos = self.pos;
+        while i < tokens.len() {
+            self.tokens.insert(tmp_pos, tokens[i].clone());
+            i += 1;
+            tmp_pos += 1;
+        }
+
+        return Node::Use {};
+    }
+
     /// Parses a statement
     fn statement(&mut self, start: usize) -> Node {
         self.pos = start;
@@ -1347,19 +1397,22 @@ impl Parser {
             return block;
         }
 
+        // Check for a struct definition
+        let use_stmt = self.use_statement(self.pos);
+        if use_stmt != Node::Non {
+            return use_stmt;
+        }
+
         return Node::Non;
     }
 
     /// Parses a series of statements based off of the input tokens
-    fn program(&mut self, mut max_len: usize) -> Vec<Box<Node>> {
-        if max_len == 0 {
-            max_len = self.tokens.len();
-        }
+    fn program(&mut self) -> Vec<Box<Node>> {
         // Stores each statement's node
         let mut nodes: Vec<Box<Node>> = Vec::new();
 
         // Loop through the tokens
-        while self.pos < max_len {
+        while self.pos < self.tokens.len() {
             // Check for a statement
             let stmt = self.statement(self.pos);
             if stmt != Node::Non {
@@ -1380,6 +1433,6 @@ impl Parser {
         self.pos = 0;
         self.symtable.add_symbol("write".to_string(), "void".to_string(), SymbolType::Func, "@printf".to_string(), None);
         self.symtable.add_symbol("len".to_string(), "int".to_string(), SymbolType::Func, "@strlen".to_string(), None);
-        self.program(0)
+        self.program()
     }
 }

@@ -1,5 +1,5 @@
 /// Stores each token's information
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Token {
     /// Type of the token
     pub typ: TokenType,
@@ -18,7 +18,7 @@ pub struct Token {
 }
 
 /// An enum with all the tokens for the language
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum TokenType {
     Plus,         // +
     Dash,         // -
@@ -43,6 +43,7 @@ pub enum TokenType {
     Dot,          // .
     Let,
     If,
+    Use,
     Else,
     Ret,
     Break,
