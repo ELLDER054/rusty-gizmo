@@ -8,7 +8,7 @@ pub enum Node {
     /// let a = 5;
     Let {
         id: String,
-        expr: Expression,
+        expr: Expr,
         gen_id: String,
     },
 
@@ -24,7 +24,7 @@ pub enum Node {
     /// # Example
     /// ret 10;
     Ret {
-        expr: Expression
+        expr: Expr
     },
 
     /// Break or continue statement
@@ -47,7 +47,7 @@ pub enum Node {
     ///     write("Yay");
     /// }
     If {
-        cond: Expression,
+        cond: Expr,
         body: Box<Node>,
         else_body: Option<Box<Node>>,
         begin: i32,
@@ -60,15 +60,15 @@ pub enum Node {
     /// or
     /// let a = 5;
     Assign {
-        id: Expression,
-        expr: Expression,
+        id: Expr,
+        expr: Expr,
     },
 
     /// Function call
     /// write(5);
     FuncCall {
         id: String,
-        args: Vec<Box<Expression>>,
+        args: Vec<Box<Expr>>,
     },
 
     /// Struct definition
@@ -93,7 +93,7 @@ pub enum Node {
     ///     // Statements
     /// }
     While {
-        cond: Expression,
+        cond: Expr,
         body: Box<Node>,
         begin: usize,
         end: usize
@@ -104,13 +104,13 @@ pub enum Node {
 
 /// An enum to store each possible expression node
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum Expression {
+pub enum Expr {
     /// Integer
     /// # Example
     /// ```rust
     /// let my_int: int = 10;
     /// ```
-    Int(i32),
+    Int(String),
 
     /// Character
     /// # Example
@@ -145,7 +145,7 @@ pub enum Expression {
 
     /// Array
     Array {
-        values: Vec<Expression>,
+        values: Vec<Expr>,
         typ: String
     },
 
@@ -153,8 +153,8 @@ pub enum Expression {
     /// # Example
     /// `array[num]` or `string[num]`
     IndexedValue {
-        src: Box<Expression>,
-        index: Box<Expression>,
+        src: Box<Expr>,
+        index: Box<Expr>,
         new_typ: String
     },
 
@@ -163,8 +163,8 @@ pub enum Expression {
     /// `5 + 6`
     BinaryOperator {
         oper: String,
-        left: Box<Expression>,
-        right: Box<Expression>,
+        left: Box<Expr>,
+        right: Box<Expr>,
     },
 
     /// Unary operator
@@ -172,7 +172,7 @@ pub enum Expression {
     /// `-6`
     UnaryOperator {
         oper: String,
-        child: Box<Expression>,
+        child: Box<Expr>,
     },
 
     /// New struct
@@ -180,14 +180,14 @@ pub enum Expression {
     /// let foo: Foo = new Foo(5, 6, 7);
     NewStruct {
         id: String,
-        fields: Vec<Expression>
+        fields: Vec<Expr>
     },
 
     /// Struct dot identifier
     /// # Example
     /// let s: string = Foo.bar;
     StructDot {
-        id: Box<Expression>,
+        id: Box<Expr>,
         id2: String,
         typ: String,
         field_num: i32
@@ -198,14 +198,14 @@ pub enum Expression {
     FuncCall {
         id: String,
         typ: String,
-        args: Vec<Box<Expression>>
+        args: Vec<Box<Expr>>
     },
 
     Non,
 }
 
 /// Returns the type of an operation "oper" "child" (i.e., -5 results in int)
-fn unary_rules<'u>(oper: &'u String, child: &'u Box<Expression>) -> &'static str {
+fn unary_rules<'u>(oper: &'u String, child: &'u Box<Expr>) -> &'static str {
     match oper.as_str() {
         "-" => match (*child).validate() {
             "int" => "int",
@@ -220,7 +220,7 @@ fn unary_rules<'u>(oper: &'u String, child: &'u Box<Expression>) -> &'static str
 }
 
 /// Returns the type of an operation "left" "oper" "right" (i.e., 5 + 5 results in int)
-fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expression>, right: &'b Box<Expression>) -> &'static str {
+fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expr>, right: &'b Box<Expr>) -> &'static str {
     match oper.as_str() {
         // Match the operator
         "+" => match (*left).validate() {
@@ -297,49 +297,49 @@ fn binary_rules<'b>(oper: &'b String, left: &'b Box<Expression>, right: &'b Box<
 }
 
 /// Implement functions for an expression node
-impl Expression {
+impl Expr {
     /// Validates the type of an expression
     pub fn validate(&self) -> &str {
         match self {
             // Match each kind of expression node to find it's type
-            Expression::Int(_i) => "int",
-            Expression::Chr(_c) => "char",
-            Expression::Dec(_d) => "dec",
-            Expression::Bool(_b) => "bool",
-            Expression::Str(_s) => "string",
-            Expression::Id(_i, t, _gen_id) => t,
-            Expression::Array {typ, ..} => typ.as_str(),
-            Expression::IndexedValue {new_typ, ..} => new_typ.as_str(),
-            Expression::BinaryOperator {oper, left, right} => binary_rules(oper, left, right),
-            Expression::UnaryOperator {oper, child} => unary_rules(oper, child),
-            Expression::NewStruct {id, ..} => id,
-            Expression::StructDot {typ, ..} => typ,
-            Expression::FuncCall {typ, ..} => typ.as_str(),
-            Expression::Non => "",
+            Expr::Int(_i) => "int",
+            Expr::Chr(_c) => "char",
+            Expr::Dec(_d) => "dec",
+            Expr::Bool(_b) => "bool",
+            Expr::Str(_s) => "string",
+            Expr::Id(_i, t, _gen_id) => t,
+            Expr::Array {typ, ..} => typ.as_str(),
+            Expr::IndexedValue {new_typ, ..} => new_typ.as_str(),
+            Expr::BinaryOperator {oper, left, right} => binary_rules(oper, left, right),
+            Expr::UnaryOperator {oper, child} => unary_rules(oper, child),
+            Expr::NewStruct {id, ..} => id,
+            Expr::StructDot {typ, ..} => typ,
+            Expr::FuncCall {typ, ..} => typ.as_str(),
+            Expr::Non => "",
         }
     }
 }
 
 #[test]
 fn test_validate() {
-    assert_eq!(Expression::Int(5).validate(), "int");
-    assert_eq!(Expression::Chr('a').validate(), "char");
-    assert_eq!(Expression::Dec("16.788".to_string()).validate(), "dec");
-    assert_eq!(Expression::Bool(true).validate(), "bool");
-    assert_eq!(Expression::Str("Hello, World!".to_string()).validate(), "string");
-    assert_eq!(Expression::Id("foo".to_string(), "int".to_string(), "%.0".to_string()).validate(), "int");
-    assert_eq!(Expression::Array {values: vec![], typ: "int[]".to_string()}.validate(), "int[]");
-    assert_eq!(Expression::IndexedValue {src: Box::new(Expression::Non), index: Box::new(Expression::Int(0)), new_typ: "int".to_string()}.validate(), "int");
-    assert_eq!(Expression::NewStruct {id: "Foo".to_string(), fields: vec![]}.validate(), "Foo");
-    assert_eq!(Expression::StructDot {id: Box::new(Expression::Non), id2: "def".to_string(), typ: "int".to_string(), field_num: 0}.validate(), "int");
+    assert_eq!(Expr::Int(5).validate(), "int");
+    assert_eq!(Expr::Chr('a').validate(), "char");
+    assert_eq!(Expr::Dec("16.788".to_string()).validate(), "dec");
+    assert_eq!(Expr::Bool(true).validate(), "bool");
+    assert_eq!(Expr::Str("Hello, World!".to_string()).validate(), "string");
+    assert_eq!(Expr::Id("foo".to_string(), "int".to_string(), "%.0".to_string()).validate(), "int");
+    assert_eq!(Expr::Array {values: vec![], typ: "int[]".to_string()}.validate(), "int[]");
+    assert_eq!(Expr::IndexedValue {src: Box::new(Expr::Non), index: Box::new(Expr::Int(0)), new_typ: "int".to_string()}.validate(), "int");
+    assert_eq!(Expr::NewStruct {id: "Foo".to_string(), fields: vec![]}.validate(), "Foo");
+    assert_eq!(Expr::StructDot {id: Box::new(Expr::Non), id2: "def".to_string(), typ: "int".to_string(), field_num: 0}.validate(), "int");
 }
 
 #[test]
 fn test_semantics() {
-    let int =    Box::new(Expression::Int(5));
-    let dec =    Box::new(Expression::Dec("5.5".to_string()));
-    let boo =    Box::new(Expression::Bool(true));
-    let string = Box::new(Expression::Str("test".to_string()));
+    let int =    Box::new(Expr::Int(5));
+    let dec =    Box::new(Expr::Dec("5.5".to_string()));
+    let boo =    Box::new(Expr::Bool(true));
+    let string = Box::new(Expr::Str("test".to_string()));
     
     assert_eq!(unary_rules(&"-".to_string(), &int),        "int");
     assert_eq!(unary_rules(&"-".to_string(), &dec),        "dec");

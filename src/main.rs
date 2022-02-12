@@ -82,7 +82,7 @@ fn compile(code: String) -> String {
 
     // Create a symbol-table and a parser
     let sym_table = SymbolController {current: Scope {parent: None, children: Vec::new(), var_symbols: Vec::new(), func_symbols: Vec::new(), struct_symbols: Vec::new()}};
-    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0, in_function: false, function_typ: "void".to_string(), label_num: 0, in_loop: false, loop_begin: 0, loop_end: 0, in_if: false};
+    let mut parser: Parser = Parser {pos: 0, tokens: tokens, symtable: sym_table, id_c: 0};
 
     // Parse the tokens
     let ast = parser.parse();

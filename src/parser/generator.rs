@@ -1,5 +1,5 @@
 use super::ast::Node;
-use super::ast::Expression;
+use super::ast::Expr;
 
 /// Converts a Gizmo type to an llvm ir type
 fn type_of(typ: String) -> String {
@@ -266,13 +266,13 @@ impl Generator {
     /// 5 -> i32 5
     /// a -> %.1
     /// ...
-    pub fn generate_expression(&mut self, expr: Expression, load_id: bool) -> String {
+    pub fn generate_expression(&mut self, expr: Expr, load_id: bool) -> String {
         match expr.clone() {
-            Expression::Int(i) => i.to_string(),
-            Expression::Chr(c) => (c as i32).to_string(),
-            Expression::Dec(d) => d.to_string(),
-            Expression::Bool(b) => b.to_string(),
-            Expression::Str(s) => {
+            Expr::Int(i) => i.to_string(),
+            Expr::Chr(c) => (c as i32).to_string(),
+            Expr::Dec(d) => d.to_string(),
+            Expr::Bool(b) => b.to_string(),
+            Expr::Str(s) => {
                 // Get the length of the string
                 let (length, rest) = self.get_str_length(s.clone());
 
@@ -284,7 +284,7 @@ impl Generator {
 
                 self.ir_b.create_gep(format!("[{} x i8]", length), global, vec!["0".to_string(), "0".to_string()])
             },
-            Expression::Id(_id, typ, gen_id) => {
+            Expr::Id(_id, typ, gen_id) => {
                 // If the caller wants to load the identifiers into a true
                 // value instead of keeping them pointers
                 if load_id == true {
@@ -293,7 +293,7 @@ impl Generator {
                     gen_id
                 }
             }
-            Expression::NewStruct {id, fields} => {
+            Expr::NewStruct {id, fields} => {
                 // Allocate a new struct
                 let begin = self.ir_b.create_alloca(type_of(id.clone()), None);
 
@@ -316,7 +316,7 @@ impl Generator {
                 }
                 self.ir_b.create_load(type_of(id), begin)
             }
-            Expression::StructDot {id, typ, field_num, ..} => {
+            Expr::StructDot {id, typ, field_num, ..} => {
                 // Generates the left side of the '.'
                 let gen_begin = self.generate_expression(*id.clone(), false);
 
@@ -328,14 +328,14 @@ impl Generator {
                     gep
                 }
             }
-            Expression::FuncCall {id, typ, args} => {
+            Expr::FuncCall {id, typ, args} => {
                 if typ.as_str() == "void" {
                     self.generate_func_call(id, "void".to_string(), args)
                 } else {
                     self.generate_func_call(id, type_of(typ), args)
                 }
             },
-            Expression::Array {values, ..} => {
+            Expr::Array {values, ..} => {
                 // If %.Arr isn't already declared, declare it
                 if !self.has_array {
                     self.ir_b.create_new_struct(".Arr".to_string(), vec![("".to_string(), "string".to_string()), ("".to_string(), "int".to_string())]);
@@ -381,7 +381,7 @@ impl Generator {
                 // Load the array
                 self.ir_b.create_load("%.Arr".to_string(), alloca)
             }
-            Expression::IndexedValue {src, index, new_typ} => {
+            Expr::IndexedValue {src, index, new_typ} => {
                 // Generate the value being indexed
                 let gen_src = self.generate_expression(*src.clone(), true);
 
@@ -420,7 +420,7 @@ impl Generator {
                     }
                 }
             }
-            Expression::BinaryOperator {oper, left, right} => {
+            Expr::BinaryOperator {oper, left, right} => {
                 // Generate the left and right sides of the expression
                 let gen_left = self.generate_expression((*left).clone(), true);
                 let gen_right = self.generate_expression((*right).clone(), true);
@@ -428,7 +428,7 @@ impl Generator {
                 // Call the ir builder to create the operation
                 self.ir_b.create_operation(oper, left.clone().validate().to_string(), gen_left, gen_right)
             }
-            Expression::UnaryOperator {oper, child} => {
+            Expr::UnaryOperator {oper, child} => {
                 let gen_child = self.generate_expression((*child).clone(), true);
                 if oper == "-".to_string() {
                     // Having a negative value is the same as multiplying
@@ -447,7 +447,7 @@ impl Generator {
     }
 
     /// Generates code for a 'let' statement
-    fn generate_let_stmt(&mut self, expr: Expression, gen_id: String) {
+    fn generate_let_stmt(&mut self, expr: Expr, gen_id: String) {
         // Generate the value
         let gen_expr = self.generate_expression(expr.clone(), true);
 
@@ -459,7 +459,7 @@ impl Generator {
     }
 
     /// Generates code for a return statement
-    fn generate_ret_stmt(&mut self, expr: Expression) {
+    fn generate_ret_stmt(&mut self, expr: Expr) {
         let gen_expr = self.generate_expression(expr.clone(), true);
         self.ir_b.code.push_str(format!("\tret {} {}\n", type_of(expr.validate().to_string()), gen_expr).as_str());
         self.ir_b.ssa_num += 1;
@@ -526,7 +526,7 @@ impl Generator {
     }
 
     /// Generates code for a while-loop
-    fn generate_while_loop(&mut self, cond: Expression, body: Box<Node>, begin: usize, end: usize) {
+    fn generate_while_loop(&mut self, cond: Expr, body: Box<Node>, begin: usize, end: usize) {
         // Generate the condition
         let gen_cond = self.generate_expression(cond.clone(), true);
 
@@ -543,7 +543,7 @@ impl Generator {
     }
     
     /// Generates code for an if-statement
-    fn generate_if_stmt(&mut self, cond: Expression, body: Box<Node>, else_body: Option<Box<Node>>, begin: i32, else_: i32, end: i32) {
+    fn generate_if_stmt(&mut self, cond: Expr, body: Box<Node>, else_body: Option<Box<Node>>, begin: i32, else_: i32, end: i32) {
         // Generate the condition
         let gen_cond = self.generate_expression(cond.clone(), true);
 
@@ -570,7 +570,7 @@ impl Generator {
     }
 
     /// Generates code for an assignment
-    fn generate_assign_stmt(&mut self, id: Expression, expr: Expression) {
+    fn generate_assign_stmt(&mut self, id: Expr, expr: Expr) {
         // Generate the value
         let gen_expr = self.generate_expression(expr.clone(), true);
 
@@ -583,7 +583,7 @@ impl Generator {
     }
 
     /// Generates code for a function call
-    fn generate_func_call(&mut self, id: String, typ: String, args: Vec<Box<Expression>>) -> String {
+    fn generate_func_call(&mut self, id: String, typ: String, args: Vec<Box<Expr>>) -> String {
         // New string to store the arguments
         let mut arg_values = String::new();
 
