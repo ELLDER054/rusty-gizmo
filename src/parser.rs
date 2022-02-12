@@ -1166,9 +1166,9 @@ impl Parser {
         self.expect_t(TokenType::SemiColon, "a semi-colon");
 
         let mut file_content = String::new();
-        for (i, c) in file.clone().unwrap().chars().enumerate() {
+        for (i, c) in file.clone().chars().enumerate() {
             if c == '.' {
-                let file_name = file.clone().unwrap()[i + 1..file.clone().unwrap().len()].to_string();
+                let file_name = file.clone()[i + 1..file.clone().len()].to_string();
                 file_content = fs::read_to_string(file_name).unwrap_or("".to_string());
                 break;
             }
