@@ -67,13 +67,15 @@ impl Parser {
         return None;
     }
 
-    fn expect_t(&mut self, t: TokenType, expected: &str) {
-        if self.match_t(t) == None {
+    fn expect_t(&mut self, t: TokenType, expected: &str) -> String {
+        let terminal = self.match_t(t);
+        if terminal == None {
             error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
                 .note(format!("Expected {}", expected.clone()).as_str())
                 .help(format!("Insert {} after this token", expected).as_str())
                 .emit();
         }
+        return terminal.unwrap();
     }
 
     /// Returns a recursively parsed expression node
@@ -343,13 +345,7 @@ impl Parser {
             let left_type = expr.clone();
             if (&self.tokens[save]).typ == TokenType::Dot {
                 // If the right side isn't found, print an error
-                let right = self.match_t(TokenType::Id);
-                if right == None {
-                    error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                        .note("Expected an expression after this operator")
-                        .help("Insert an expression after this operator")
-                        .emit();
-                }
+                let right = self.expect_t(TokenType::Id, "an identifier");
 
                 let sym = self.symtable.find_global_struct(expr.clone().validate().to_string());
                 if sym == None {
@@ -362,10 +358,10 @@ impl Parser {
 
                 let mut field_num = 0;
                 for field in sym.unwrap().arg_types.iter() {
-                    if field.clone() == right.clone().unwrap() {
+                    if field.clone() == right.clone() {
                         expr = Expression::StructDot {
                             id: Box::new(expr.clone()),
-                            id2: right.clone().unwrap(),
+                            id2: right.clone(),
                             typ: field.clone(),
                             field_num: field_num
                         };
@@ -538,16 +534,10 @@ impl Parser {
             if e == Expression::Non {
                 error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
                     .note("Expected an expression")
-                    .help("Insert an expression after this left parenthesis")
+                    .help("Insert an expression after this '('")
                     .emit();
             }
-            let rp = self.match_t(TokenType::RightParen);
-            if rp == None {
-                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                    .note("Expected a right parenthesis")
-                    .help("Insert a right parenthesis after this expression")
-                    .emit();
-            }
+            self.expect_t(TokenType::RightParen, "a ')'");
             return e;
         }
 
@@ -680,13 +670,7 @@ impl Parser {
         }
 
         // Match an identifier to follow the keyword
-        let id = self.match_t(TokenType::Id);
-        if id == None {
-            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                .note("Expected an identifier")
-                .help("Insert an identifier after this token")
-                .emit();
-        }
+        let id = self.expect_t(TokenType::Id, "an identifier");
         
         // Match a left curly brace to follow the identifier
         self.expect_t(TokenType::LeftBrace, "a left curly brace");
@@ -696,13 +680,7 @@ impl Parser {
         let mut fields: Vec<(String, String)> = Vec::new();
         loop {
             // Match an identifier
-            let id = self.match_t(TokenType::Id);
-            if id == None {
-                error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                    .note("Expected an identifier")
-                    .help("Insert an identifier after this token")
-                    .emit();
-            }
+            let id = self.expect_t(TokenType::Id, "an identifier");
 
             // Match a colon after the identifier
             self.expect_t(TokenType::Colon, "a colon");
@@ -717,7 +695,7 @@ impl Parser {
             }
 
             // Push the field onto the list of fields
-            fields.push((id.unwrap(), typ.unwrap()));
+            fields.push((id, typ.unwrap()));
 
             // Match a comma
             // If the comma isn't there, stop looking for more fields
@@ -735,10 +713,10 @@ impl Parser {
         for field in fields.iter() {
             types.push(field.clone().1);
         }
-        self.symtable.add_symbol(id.clone().unwrap(), id.clone().unwrap(), SymbolType::Struct, format!("%.{}", self.id_c), Some(types));
+        self.symtable.add_symbol(id.clone(), id.clone(), SymbolType::Struct, format!("%.{}", self.id_c), Some(types));
         
         // Return the struct node
-        return Node::Struct {id: id.unwrap(), fields: fields};
+        return Node::Struct {id: id, fields: fields};
     }
 
     /// Parse a function declaration
@@ -757,13 +735,7 @@ impl Parser {
         }
 
         // Match an identifier
-        let id = self.match_t(TokenType::Id);
-        if id == None {
-            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                .note("Expected an identifier")
-                .help("Insert an identifier after this token")
-                .emit();
-        }
+        let id = self.expect_t(TokenType::Id, "an identifier");
 
         // Match a left parenthesis
         self.expect_t(TokenType::LeftParen, "a left parenthesis");
@@ -814,11 +786,11 @@ impl Parser {
 
         self.in_function = true;
         self.function_typ = typ.clone().unwrap();
-        self.symtable.add_symbol(id.clone().unwrap(), typ.clone().unwrap(), SymbolType::Func, id.clone().unwrap(), Some(arg_types));
+        self.symtable.add_symbol(id.clone(), typ.clone().unwrap(), SymbolType::Func, id.clone(), Some(arg_types));
         let body = self.block_statement(self.pos, arg_symbols);
         self.in_function = false;
 
-        return Node::FuncDecl {id: id.unwrap(), typ: typ.unwrap(), args: args, body: Box::new(body)};
+        return Node::FuncDecl {id: id, typ: typ.unwrap(), args: args, body: Box::new(body)};
     }
 
     /// Parses a function call with no semi-colon
@@ -1119,13 +1091,7 @@ impl Parser {
         }
         
         // Match an identifier after the 'let' keyword
-        let id = self.match_t(TokenType::Id);
-        if id == None {
-            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                .note("Expected an identifier")
-                .help("Insert an identifier after this token")
-                .emit();
-        }
+        let id = self.expect_t(TokenType::Id, "an identifier");
 
         // Match an equals sign after the identifer
         let eq = self.match_t(TokenType::Equal);
@@ -1180,9 +1146,9 @@ impl Parser {
         // Match a semi-colon after the expression
         self.expect_t(TokenType::SemiColon, "a semi-colon");
 
-        self.symtable.add_symbol(id.clone().unwrap(), expr.validate().to_string(), SymbolType::Var, format!("%.{}", self.id_c), None);
+        self.symtable.add_symbol(id.clone(), expr.validate().to_string(), SymbolType::Var, format!("%.{}", self.id_c), None);
         self.id_c += 1;
-        return Node::Let {id: id.unwrap(), expr: expr, gen_id: format!("%.{}", self.id_c - 1)};
+        return Node::Let {id: id, expr: expr, gen_id: format!("%.{}", self.id_c - 1)};
     }
 
     fn use_statement(&mut self, start: usize) -> Node {
@@ -1195,13 +1161,7 @@ impl Parser {
             return Node::Non;
         }
 
-        let file = self.match_t(TokenType::Str);
-        if file == None {
-            error(ErrorType::ExpectedToken, &self.tokens[self.pos - 1])
-                .note("Expected a string")
-                .help("Insert a string after this token")
-                .emit();
-        }
+        let file = self.expect_t(TokenType::Str, "a string");
 
         self.expect_t(TokenType::SemiColon, "a semi-colon");
 
