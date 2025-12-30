@@ -1,0 +1,10 @@
+func expr(string expression) {
+    let i = 0;
+    while (i < len(expression)) {
+        let c = expression[i];
+        write(c, "\n");
+        i = i + 1;
+    }
+}
+
+expr("5 + 5");

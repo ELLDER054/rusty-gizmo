@@ -1,0 +1,5 @@
+func add(int x, int y) : int {
+    ret x + y;
+}
+write("5 + 6 is ", add(5, 6), '\n', "abcdefg\n");
+write((5+2)*3, "\n");

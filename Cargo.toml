@@ -1,0 +1,5 @@
+[package]
+name = "gizmoc"
+
+[dependencies]
+colorz = "1.1.2"
