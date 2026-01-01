@@ -6,6 +6,9 @@ The Gizmo language written in rust.
 ## Documentation
 Check out the [main website](http://gizmolang.org/). *This doesn't work anymore
 
+## Examples
+Check out the examples folder for some programs to show you the ropes.
+
 ## Building
 To clone the project from github, use:  
 ```shell
