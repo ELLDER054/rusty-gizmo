@@ -1,0 +1,9 @@
+func while_loop_test(string s) {
+    let i = 0;
+    while (i < len(s)) {
+        write(s[i], "\n");
+        i = i + 1;
+    }
+}
+
+while_loop_test("abcdef");
