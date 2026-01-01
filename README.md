@@ -4,7 +4,7 @@ The Gizmo language written in rust.
 **This is a toy compiler for educational purposes. Do not take this seriously as a product.**
 
 ## Documentation
-Check out the [main website](http://gizmolang.org/). *This doesn't work anymore
+Check out the [main website](http://gizmolang.org/). *This link does not work anymore
 
 ## Examples
 Check out the examples folder for some programs to show you the ropes.
