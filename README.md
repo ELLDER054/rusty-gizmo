@@ -1,8 +1,10 @@
 # Rusty Gizmo
 The Gizmo language written in rust.
 
+**This is a toy compiler for educational purposes. Do not take this seriously as a product.**
+
 ## Documentation
-Check out the [main website](http://gizmolang.org/).
+Check out the [main website](http://gizmolang.org/). *This doesn't work anymore
 
 ## Building
 To clone the project from github, use:  
