@@ -6,6 +6,9 @@ The Gizmo language written in rust.
 ## Examples
 Check out the examples folder for some programs to show you the ropes.
 
+## How do Compilers work?
+Check out the LEARN.md file in the codes section above to see an outline for how a compiler works (with examples).
+
 # How I Got Into Compiler Design
 Well. I really don't know. I guess I imagine that I used to be a weird little kid in a programming candy shop - just totally in love with reading other peoples' code for compilers. The compilers just felt special. I was so excited that I could be writing a new language in another language. I simply devoured any content related to them. Even if it was a dense college-level textbook, I just had to read it and understand. Now, the lanuage I made was sadly quite esoteric and lacking in originality, but... it's special in my heart. And it wasn't entirely useless. Sometimes, being the **architect** of a language helps you understand why some languages have those little quirks and why they do things the way they do.
 
